@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SETVE Documentation YAML Frontmatter Taxonomy Schema",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "type",
+    "status",
+    "domain",
+    "layer",
+    "c4_level",
+    "diataxis_type",
+    "traceability",
+    "owner",
+    "last_validated_date"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^(BRD|HLD|LLD|ADR)-[A-Z0-9]+-[0-9]{3,4}$"
+    },
+    "title": { "type": "string" },
+    "type": { "type": "string", "enum": ["BRD", "HLD", "LLD", "ADR"] },
+    "status": { "type": "string", "enum": ["DRAFT", "PROPOSED", "APPROVED", "SUPERSEDED", "DEPRECATED"] },
+    "domain": { "type": "string", "enum": ["control-plane", "data-plane", "observability", "validation"] },
+    "layer": { "type": "string", "enum": ["ingress", "compute-engine", "storage", "transport", "telemetry"] },
+    "c4_level": { "type": "string", "enum": ["context", "container", "component", "code"] },
+    "diataxis_type": { "type": "string", "enum": ["reference", "explanation", "how-to", "tutorial"] },
+    "traceability": {
+      "type": "object",
+      "required": ["implements_brd", "governed_by_adr"],
+      "properties": {
+        "implements_brd": { "type": "array", "items": { "type": "string" } },
+        "governed_by_adr": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "code_references": { "type": "array", "items": { "type": "string" } },
+    "owner": { "type": "string" },
+    "last_validated_date": { "type": "string", "format": "date" }
+  }
+}

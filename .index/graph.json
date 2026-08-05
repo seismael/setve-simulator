@@ -1,0 +1,295 @@
+{
+  "nodes": {
+    "ADR-0001": {
+      "path": "docs\\03-adr\\0001-io-uring-direct-io.md",
+      "title": "Use Linux io_uring and O_DIRECT for Zero-Copy High-Throughput I/O",
+      "type": "ADR",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "storage",
+      "code_references": [
+        "setve/adapters/io_uring.py",
+        "setve/adapters/posix.py"
+      ],
+      "test_references": []
+    },
+    "ADR-0002": {
+      "path": "docs\\03-adr\\0002-cluster-coordination-engine.md",
+      "title": "Select Cluster Coordination Engine and Privilege Boundaries",
+      "type": "ADR",
+      "status": "APPROVED",
+      "domain": "control-plane",
+      "layer": "compute-engine",
+      "code_references": [],
+      "test_references": []
+    },
+    "LLD-ADAPTER-001": {
+      "path": "docs\\04-lld\\memory\\LLD-ADAPTER-001.md",
+      "title": "Linux io_uring Target Adapter & Kernel Ring Queue Loop",
+      "type": "LLD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "storage",
+      "code_references": [
+        "setve/adapters/io_uring.py",
+        "setve/adapters/base.py"
+      ],
+      "test_references": []
+    },
+    "LLD-MUTATOR-001": {
+      "path": "docs\\04-lld\\memory\\LLD-MUTATOR-001.md",
+      "title": "SIMD Payload Mutator and Entropy Engine",
+      "type": "LLD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "compute-engine",
+      "code_references": [
+        "setve/payload/mutator.py"
+      ],
+      "test_references": []
+    },
+    "LLD-K8S-001": {
+      "path": "docs\\04-lld\\orchestration\\LLD-K8S-001.md",
+      "title": "Kubernetes Operator & KEDA Binding Implementations",
+      "type": "LLD",
+      "status": "APPROVED",
+      "domain": "infrastructure",
+      "layer": "ingress",
+      "code_references": [
+        "deploy/k8s/operator/controller.py"
+      ],
+      "test_references": []
+    },
+    "LLD-ORCH-001": {
+      "path": "docs\\04-lld\\orchestration\\LLD-ORCH-001.md",
+      "title": "Master Orchestrator Process Manager & gRPC Synchronization Engine",
+      "type": "LLD",
+      "status": "APPROVED",
+      "domain": "control-plane",
+      "layer": "compute-engine",
+      "code_references": [
+        "setve/orchestrator/master.py",
+        "setve/orchestrator/sync.py"
+      ],
+      "test_references": []
+    },
+    "HLD-SETVE-001": {
+      "path": "docs\\02-hld\\compute-engine\\HLD-SETVE-001.md",
+      "title": "Universal Simulation Engine System Topology & Data Plane Architecture",
+      "type": "HLD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "compute-engine",
+      "code_references": [
+        "setve/orchestrator/master.py",
+        "setve/payload/mutator.py",
+        "setve/adapters/base.py"
+      ],
+      "test_references": []
+    },
+    "HLD-DIST-001": {
+      "path": "docs\\02-hld\\control-plane\\HLD-DIST-001.md",
+      "title": "Distributed Control Plane, Barrier Synchronization, & Workload Sharding Engine",
+      "type": "HLD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "compute-engine",
+      "code_references": [
+        "setve/orchestrator/master.py",
+        "setve/orchestrator/cluster.py",
+        "setve/orchestrator/sync.py"
+      ],
+      "test_references": []
+    },
+    "HLD-ENV-001": {
+      "path": "docs\\02-hld\\infrastructure\\HLD-ENV-001.md",
+      "title": "Multi-Tier Infrastructure & Environment Lifecycle Architecture",
+      "type": "HLD",
+      "status": "APPROVED",
+      "domain": "infrastructure",
+      "layer": "ingress",
+      "code_references": [
+        "deploy/environments/local/",
+        "deploy/environments/dev/",
+        "deploy/environments/staging/",
+        "deploy/environments/prod/"
+      ],
+      "test_references": []
+    },
+    "HLD-K8S-001": {
+      "path": "docs\\02-hld\\infrastructure\\HLD-K8S-001.md",
+      "title": "Kubernetes Operator, KEDA Auto-Scaling, & Pod Topology Infrastructure",
+      "type": "HLD",
+      "status": "APPROVED",
+      "domain": "infrastructure",
+      "layer": "ingress",
+      "code_references": [
+        "deploy/k8s/operator/controller.py",
+        "deploy/helm/setve-cluster/values.yaml"
+      ],
+      "test_references": []
+    },
+    "BRD-DIST-001": {
+      "path": "docs\\01-brd\\control-plane\\BRD-DIST-001.md",
+      "title": "Distributed Cluster Scaling & Horizontal Throughput Objectives",
+      "type": "BRD",
+      "status": "APPROVED",
+      "domain": "control-plane",
+      "layer": "compute-engine",
+      "code_references": [],
+      "test_references": []
+    },
+    "BRD-SETVE-001": {
+      "path": "docs\\01-brd\\data-plane\\BRD-SETVE-001.md",
+      "title": "Universal High-Throughput Simulation & Telemetry Validation Engine (SETVE)",
+      "type": "BRD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "compute-engine",
+      "code_references": [],
+      "test_references": []
+    }
+  },
+  "edges": [
+    {
+      "source": "ADR-0001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "ADR-0002",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-ADAPTER-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-ADAPTER-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "LLD-MUTATOR-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-MUTATOR-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "LLD-K8S-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-K8S-001",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-K8S-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "LLD-ORCH-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-ORCH-001",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-ORCH-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "LLD-ORCH-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-SETVE-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-SETVE-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-SETVE-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-DIST-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-DIST-001",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-DIST-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-DIST-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-ENV-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-ENV-001",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-ENV-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-ENV-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-K8S-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-K8S-001",
+      "target": "BRD-DIST-001",
+      "relation": "implements"
+    },
+    {
+      "source": "HLD-K8S-001",
+      "target": "ADR-0001",
+      "relation": "governed_by"
+    },
+    {
+      "source": "HLD-K8S-001",
+      "target": "ADR-0002",
+      "relation": "governed_by"
+    }
+  ]
+}
