@@ -219,5 +219,9 @@ To ensure deterministic navigation for developers and AI agents, every requireme
 
 $$\text{BRD (Requirement)} \longrightarrow \text{HLD (Architecture)} \longrightarrow \text{ADR (Decision)} \longrightarrow \text{LLD (Implementation)} \longrightarrow \text{Code / Unit Test}$$
 
-1. **RAG Search Strategy:** When an agent answers a query, it reads the document's `traceability` block to recursively fetch parent context (BRD) or child specs (LLD) before generating code.
+1. **Token-Efficient RAG Strategy (ADX):** Agents MUST prioritize token efficiency. 
+   - **Do NOT** read `DOCUMENTATION.md` unless generating a completely new document from templates. 
+   - **Do NOT** read files sequentially. 
+   - **DO** use exact searches (e.g., `grep_search` on the codebase for `code_references: [filename]`) to immediately locate the single LLD that governs the task. 
+   - **DO** query `.index/graph.json` directly to resolve parent/child dependencies instantaneously rather than bouncing between multiple markdown files.
 2. **Validation Gate:** A pre-commit hook parses `.index/graph.json` to verify that no orphan LLDs exist without an approving HLD, and no HLD violates an ADR.

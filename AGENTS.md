@@ -108,6 +108,10 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 * **Constraint:** High-level designs must cover failure modes, blast radius, and security modeling.
 * **Enforcement:** Use domains `operations` (for runbooks, chaos profiles, RTO/RPO) and `security` (for STRIDE threat models, memory-safety bounds) in document frontmatter when drafting operational or security specs.
 
+### 10. Agentic Documentation Updates (ADX Efficiency)
+* **Constraint:** Agents must independently maintain the `.index/graph.json` state.
+* **Enforcement:** When creating, moving, or updating the frontmatter of any `.md` file in `docs/`, you MUST immediately execute `python scripts/build_doc_graph.py` to regenerate the graph before finalizing your task. This ensures the RAG index remains perfectly accurate for the next agent session.
+
 ---
 
 ## Coding Standards & Quality Gates
@@ -124,7 +128,7 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 ## Agent Task Execution Workflow
 
 1. **Evaluate Request & Update Governance:** Parse incoming user prompt for behavioral feedback/preferences. If present, immediately update `AGENTS.md` rules first.
-2. **Trace Context & Specs:** Query `docs/` using the frontmatter `traceability` graph ($\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$) to load exact requirements and design constraints before code generation.
+2. **Trace Context & Specs (ADX Efficient Navigation):** Do NOT read `docs/` sequentially. Use `grep_search` on the `docs/` directory to locate specific `domain:`, `id:`, or `code_references:` matches (e.g., search for `setve/payload/mutator.py` to find its governing LLD). Use `view_file` on `.index/graph.json` to instantly map dependencies ($\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$) without wasting tokens on full file reads. Keep your context window tight.
 3. **Classify Scope:** Identify whether task touches **Control Plane** (`orchestrator/`), **Data Plane** (`adapters/`, `payload/`), or **Validation Plane** (`validation/`).
 4. **Hot Path Audit:** If modifying `adapters/` or `payload/`, verify zero dynamic allocations or data copying.
 5. **Alignment Verification:** Validate $4096\text{-byte}$ page alignment on new buffer slicing operations.
