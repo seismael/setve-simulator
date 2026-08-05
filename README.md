@@ -1,6 +1,10 @@
 # SETVE: Universal Simulation & Telemetry Validation Engine
 
-**SETVE** is a platform-agnostic, infinitely scalable load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems ($\ge 8\text{ GB/s}$ per node to multi-TB/s clusters).
+[![Build Status](https://github.com/seismael/setve-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
+[![Doc Graph](https://github.com/seismael/setve-simulator/actions/workflows/doc_graph_check.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+
+**SETVE** is a platform-agnostic, infinitely scalable load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems ($\ge 8\text{ GB/s}$ per node to multi-TB/s clusters). Built from the ground up using strict Domain-Driven Design (DDD) and Gang of Four (GoF) patterns, it completely decouples the distributed control plane from zero-copy, hardware-aligned data planes.
 
 ## Key Architecture & Specifications
 
@@ -43,4 +47,23 @@ make test
 
 # Rebuild AI Agent RAG index
 make docs-index
+```
+
+## Running a Simulation
+
+SETVE uses declarative `WorkloadBlueprint` definitions to drive execution.
+
+```python
+from setve.payload.blueprint import WorkloadBlueprint
+from setve.orchestrator.master import MultiCoreOrchestrator
+
+blueprint = WorkloadBlueprint(
+    run_id="production-stress-test",
+    target_uri="iouring:///dev/nvme0n1",
+    target_throughput_gbps=100,
+    duration_seconds=30
+)
+
+orchestrator = MultiCoreOrchestrator()
+orchestrator.start(blueprint)
 ```
