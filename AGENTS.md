@@ -112,6 +112,12 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 * **Constraint:** Agents must independently maintain the `.index/graph.json` state.
 * **Enforcement:** When creating, moving, or updating the frontmatter of any `.md` file in `docs/`, you MUST immediately execute `python scripts/build_doc_graph.py` to regenerate the graph before finalizing your task. This ensures the RAG index remains perfectly accurate for the next agent session.
 
+### 11. LLM Cost Efficiency & Implementation Quality
+* **Constraint:** AI Agents must strictly minimize their token footprint (cost) while maximizing the accuracy of architectural implementations.
+* **Enforcement:**
+  - **Efficiency:** Never bulk-read directories or sequential markdown files. By isolating reads to exact `code_references:` and `graph.json` traversal, the agent dramatically drops input tokens, driving down API costs and preventing context saturation.
+  - **Quality Implementation:** Semantic guessing is banned. Agents must extract exact constraints (e.g., $4096\text{-byte}$ alignment) directly from the target LLD before writing code, ensuring the implementation output is deterministic, professional, and mathematically validated by the test suite.
+
 ---
 
 ## Coding Standards & Quality Gates
