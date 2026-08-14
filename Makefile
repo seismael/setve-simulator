@@ -39,6 +39,12 @@ usecases:
 	$(PYTHON) usecases/usecase_03_prometheus_monitoring.py
 	$(PYTHON) usecases/usecase_04_ebpf_triangulation.py
 	$(PYTHON) usecases/usecase_05_ai_vector_s3.py
+	$(PYTHON) usecases/usecase_06_ai_kv_cache_checkpointing.py
+	$(PYTHON) usecases/usecase_07_multitenant_qos_noisy_neighbor.py
+	$(PYTHON) usecases/usecase_08_chaos_node_failure.py
+	$(PYTHON) usecases/usecase_09_storage_tiering_lifecycle.py
+	$(PYTHON) usecases/usecase_10_tail_latency_microburst.py
+
 
 docs-index:
 	$(PYTHON) scripts/build_doc_graph.py

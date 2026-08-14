@@ -232,6 +232,12 @@ The [`usecases/`](file:///c:/dev/projects/setve-simulator/usecases/README.md) ca
 | **03. Prometheus Monitoring** | [`usecases/usecase_03_prometheus_monitoring.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_03_prometheus_monitoring.py) | Emits live Prometheus `/metrics` exposition and ClickHouse JSON telemetry. |
 | **04. eBPF Triangulation** | [`usecases/usecase_04_ebpf_triangulation.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_04_ebpf_triangulation.py) | Mathematically audits client metrics vs kernel interface wire counters ($\le 0.1\%$). |
 | **05. AI Vector & S3** | [`usecases/usecase_05_ai_vector_s3.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_05_ai_vector_s3.py) | Simulates parallel vector embedding upserts and S3 multipart streaming. |
+| **06. AI KV-Cache & Checkpoints** | [`usecases/usecase_06_ai_kv_cache_checkpointing.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_06_ai_kv_cache_checkpointing.py) | Models LLM prefill burst, random KV-cache decode, and weight checkpoints. |
+| **07. Multi-Tenant QoS** | [`usecases/usecase_07_multitenant_qos_noisy_neighbor.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_07_multitenant_qos_noisy_neighbor.py) | Evaluates mission-critical SLA ($p_{99} \le 2\text{ms}$) vs noisy-neighbor saturation. |
+| **08. Chaos & Shard Rebalance** | [`usecases/usecase_08_chaos_node_failure.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_08_chaos_node_failure.py) | Simulates $25\%$ node failure and dynamic gap-free shard rebalancing. |
+| **09. Multi-Tier Lifecycle** | [`usecases/usecase_09_storage_tiering_lifecycle.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_09_storage_tiering_lifecycle.py) | Models data aging across Hot NVMe $\rightarrow$ Warm Block $\rightarrow$ Cold S3. |
+| **10. Tail Micro-Burst Analysis** | [`usecases/usecase_10_tail_latency_microburst.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_10_tail_latency_microburst.py) | Injects $50\text{ms}$ $100\times$ traffic surges capturing $p_{99.9} / p_{99.99}$ HDR latency spikes. |
+
 
 ---
 

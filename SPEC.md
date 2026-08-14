@@ -242,4 +242,10 @@ Production-ready use case scenarios are maintained in the [`usecases/`](file:///
 3. **`usecases/usecase_03_prometheus_monitoring.py`**: Real-time telemetry extraction, HDR percentiles ($p_{50}, p_{90}, p_{99}$), and Prometheus text exposition.
 4. **`usecases/usecase_04_ebpf_triangulation.py`**: Out-of-band kernel/hardware trace counter triangulation ($\le 0.1\%$ SLA).
 5. **`usecases/usecase_05_ai_vector_s3.py`**: High-density AI embedding batch upserts & multipart S3 object streaming.
+6. **`usecases/usecase_06_ai_kv_cache_checkpointing.py`**: AI LLM prefill context burst, random KV-cache decode, and weight checkpoints.
+7. **`usecases/usecase_07_multitenant_qos_noisy_neighbor.py`**: Multi-tenant QoS contention and mission-critical tail-latency SLA audit.
+8. **`usecases/usecase_08_chaos_node_failure.py`**: Distributed generator chaos engineering, node failure, and dynamic shard rebalancing.
+9. **`usecases/usecase_09_storage_tiering_lifecycle.py`**: Automated data tiering across Hot NVMe $\rightarrow$ Warm Block $\rightarrow$ Cold S3.
+10. **`usecases/usecase_10_tail_latency_microburst.py`**: High-resolution 64-bucket HDR histogram analysis under $50\text{ ms}$ micro-bursts.
+
 
