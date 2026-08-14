@@ -1,6 +1,6 @@
 """High-density Vector / Embedding Database Target Adapter."""
 
-from typing import Any, Dict
+from typing import Any
 
 from setve.adapters.base import (
     AdapterCapabilities,
@@ -21,7 +21,7 @@ class VectorTargetAdapter(TargetAdapter):
             native_block_size=64,  # SIMD 64-byte alignment baseline
         )
 
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(self, config: dict[str, Any]) -> None:
         """Initialize vector DB gRPC/REST connection channel."""
         pass
 

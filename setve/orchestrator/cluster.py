@@ -1,7 +1,6 @@
 """Deterministic cluster sharding engine."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,6 +10,7 @@ class WorkerShardSpec:
     seed: int
     base_offset_bytes: int
     stride_bytes: int
+    block_size_bytes: int
     target_throughput_bps: int
 
 
@@ -29,19 +29,19 @@ class DeterministicShardGenerator:
     def generate_cluster_shards(
         cls,
         global_seed: int,
-        nodes: List[Tuple[str, int]],
+        nodes: list[tuple[str, int]],
         target_total_throughput_bps: int,
         block_size: int = 1048576,
-    ) -> Dict[str, List[WorkerShardSpec]]:
+    ) -> dict[str, list[WorkerShardSpec]]:
         """Generates deterministic worker shard configurations across all physical nodes."""
         total_cores = sum(cores for _, cores in nodes)
         per_core_throughput = target_total_throughput_bps // total_cores if total_cores else 0
 
-        shards: Dict[str, List[WorkerShardSpec]] = {}
+        shards: dict[str, list[WorkerShardSpec]] = {}
         global_core_index = 0
 
         for node_id, core_count in nodes:
-            node_shards: List[WorkerShardSpec] = []
+            node_shards: list[WorkerShardSpec] = []
             for local_core in range(core_count):
                 combined_state = (global_seed ^ global_core_index) & 0xFFFFFFFFFFFFFFFF
                 worker_seed = cls._splitmix64(combined_state)
@@ -54,6 +54,7 @@ class DeterministicShardGenerator:
                     seed=worker_seed,
                     base_offset_bytes=base_offset,
                     stride_bytes=stride,
+                    block_size_bytes=block_size,
                     target_throughput_bps=per_core_throughput,
                 )
                 node_shards.append(spec)

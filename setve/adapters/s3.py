@@ -1,6 +1,6 @@
 """S3 Object Storage Target Adapter."""
 
-from typing import Any, Dict
+from typing import Any
 
 from setve.adapters.base import (
     AdapterCapabilities,
@@ -21,7 +21,7 @@ class S3TargetAdapter(TargetAdapter):
             native_block_size=5242880,  # 5MB S3 part minimum
         )
 
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(self, config: dict[str, Any]) -> None:
         """Initialize S3 client session credentials and endpoint config."""
         pass
 

@@ -16,10 +16,12 @@ code_references:
   - "setve/orchestrator/master.py"
   - "setve/orchestrator/cluster.py"
   - "setve/orchestrator/sync.py"
-test_references: []
+test_references:
+  - "tests/test_master_telemetry.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # HLD-DIST-001: Distributed Control Plane, Barrier Synchronization, & Workload Sharding Engine
 

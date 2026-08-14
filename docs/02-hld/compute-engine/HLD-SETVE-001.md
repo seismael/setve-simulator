@@ -16,10 +16,12 @@ code_references:
   - "setve/orchestrator/master.py"
   - "setve/payload/mutator.py"
   - "setve/adapters/base.py"
-test_references: []
+test_references:
+  - "tests/benchmark_suite.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # HLD-SETVE-001: Universal Simulation Engine — System Topology & Data Plane Architecture
 

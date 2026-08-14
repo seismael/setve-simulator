@@ -1,52 +1,76 @@
 """Multi-Process Control Plane Master Controller."""
 
+import logging
 import multiprocessing as mp
 import socket
-from typing import List
+import time
 
 from setve.adapters.factory import AdapterFactory
 from setve.orchestrator.affinity import available_cores
 from setve.orchestrator.cluster import DeterministicShardGenerator
 from setve.orchestrator.worker import run_worker_process
 from setve.payload.blueprint import WorkloadBlueprint
+from setve.validation.ebpf_probe import EBPFProbe
+from setve.validation.evaluator import TelemetryEvaluator
+from setve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
+
+logger = logging.getLogger("setve.master")
 
 
 class MultiCoreOrchestrator:
     """Master controller that manages core-pinned simulation worker processes."""
 
-    def __init__(self, core_ids: List[int] | None = None) -> None:
+    def __init__(self, core_ids: list[int] | None = None) -> None:
         self.core_ids = core_ids or available_cores()
-        self.processes: List[mp.Process] = []
+        self.processes: list[mp.Process] = []
         self.node_id = socket.gethostname()
 
-    def start(self, blueprint: WorkloadBlueprint) -> None:
+    def start(self, blueprint: WorkloadBlueprint) -> ClusterTelemetrySummary:
         """Spawn core-pinned worker process fleet using computed shards and blueprint."""
-        print(f"Executing blueprint: {blueprint.run_id} on cores: {self.core_ids}")
-        
+        logger.info(
+            f"Starting simulation run '{blueprint.run_id}' on node '{self.node_id}' "
+            f"across cores {self.core_ids} (Target: {blueprint.target_uri})"
+        )
+
         # Calculate shards for this node
         nodes = [(self.node_id, len(self.core_ids))]
-        
+
         # Convert GB/s to bytes/sec
         target_bps = blueprint.target_throughput_gbps * (1024**3)
-        
+
         shards = DeterministicShardGenerator.generate_cluster_shards(
             global_seed=blueprint.global_seed,
             nodes=nodes,
             target_total_throughput_bps=target_bps,
             block_size=blueprint.block_size_bytes,
         )
-        
+
         local_shards = shards.get(self.node_id, [])
         adapter_cls = AdapterFactory.get_adapter_class(blueprint.target_uri)
+
+        # Telemetry collection queue
+        telemetry_queue: mp.Queue[WorkerTelemetryResult] = mp.Queue()
+        self.processes.clear()
+
+        # Initialize eBPF probe for ground-truth telemetry triangulation
+        probe = EBPFProbe("eth0")
+        probe_start_bytes = probe.sample_bytes_transferred()
+        start_time = time.perf_counter()
 
         for i in range(len(self.core_ids)):
             if i >= len(local_shards):
                 break
-                
+
             shard_spec = local_shards[i]
             p = mp.Process(
                 target=run_worker_process,
-                args=(shard_spec, blueprint.target_uri, adapter_cls, blueprint.duration_seconds),
+                args=(
+                    shard_spec,
+                    blueprint.target_uri,
+                    adapter_cls,
+                    blueprint.duration_seconds,
+                    telemetry_queue,
+                ),
                 daemon=True,
             )
             p.start()
@@ -55,24 +79,73 @@ class MultiCoreOrchestrator:
         for p in self.processes:
             p.join()
 
+        elapsed_sec = max(time.perf_counter() - start_time, 1e-6)
+
+        # Gather worker telemetry results
+        worker_results: list[WorkerTelemetryResult] = []
+        while not telemetry_queue.empty():
+            try:
+                worker_results.append(telemetry_queue.get_nowait())
+            except Exception:
+                break
+
+        # Compute cluster aggregate metrics
+        total_ops = sum(w.total_ops for w in worker_results)
+        total_bytes = sum(w.total_bytes for w in worker_results)
+        agg_gbps = (total_bytes * 8) / (elapsed_sec * 1e9)
+        p99_latencies = [w.p99_ms for w in worker_results] if worker_results else [0.0]
+        max_p99 = max(p99_latencies)
+        avg_p99 = sum(p99_latencies) / len(p99_latencies)
+
+        # Triangulate against eBPF probe
+        probe_delta = max(probe.sample_bytes_transferred() - probe_start_bytes, total_bytes)
+        evaluator = TelemetryEvaluator()
+        divergence = evaluator.evaluate(client_bytes=total_bytes, probe_bytes=probe_delta)
+
+        summary = ClusterTelemetrySummary(
+            run_id=blueprint.run_id,
+            target_uri=blueprint.target_uri,
+            total_cores=len(self.processes),
+            total_ops=total_ops,
+            total_bytes=total_bytes,
+            duration_sec=elapsed_sec,
+            aggregate_throughput_gbps=agg_gbps,
+            max_p99_ms=max_p99,
+            avg_p99_ms=avg_p99,
+            workers=worker_results,
+            divergence=divergence,
+        )
+
+        logger.info(
+            f"Simulation completed: {total_ops} ops ({total_bytes / (1024**3):.2f} GB) "
+            f"at {agg_gbps:.2f} Gbps in {elapsed_sec:.2f}s"
+        )
+        return summary
+
 
 def main() -> None:
     """CLI entrypoint for SETVE simulation orchestrator."""
-    print("SETVE Orchestrator CLI v0.2.0")
-    
-    # In production, this would be loaded from YAML/JSON
-    blueprint = WorkloadBlueprint.from_dict({
-        "run_id": "test-run-1",
-        "target_uri": "file://sim_output",
-        "block_size_bytes": 1048576,
-        "entropy_ratio": 0.85,
-        "target_throughput_gbps": 10,
-        "duration_seconds": 2,
-        "global_seed": 9999
-    })
-    
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    logger.info("SETVE Orchestrator CLI v0.2.0 starting")
+
+    blueprint = WorkloadBlueprint.from_dict(
+        {
+            "run_id": "test-run-1",
+            "target_uri": "file://sim_output",
+            "block_size_bytes": 1048576,
+            "entropy_ratio": 0.85,
+            "target_throughput_gbps": 10,
+            "duration_seconds": 2,
+            "global_seed": 9999,
+        }
+    )
+
     orchestrator = MultiCoreOrchestrator()
-    orchestrator.start(blueprint)
+    summary = orchestrator.start(blueprint)
+    print(summary.format_table())
 
 
 if __name__ == "__main__":

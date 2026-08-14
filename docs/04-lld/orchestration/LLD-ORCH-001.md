@@ -14,11 +14,21 @@ traceability:
   child_llds: []
 code_references:
   - "setve/orchestrator/master.py"
+  - "setve/orchestrator/worker.py"
+  - "setve/orchestrator/cluster.py"
   - "setve/orchestrator/sync.py"
-test_references: []
+  - "setve/orchestrator/affinity.py"
+  - "setve/validation/metric_collector.py"
+  - "setve/validation/reporter.py"
+test_references:
+  - "tests/test_cluster_sync.py"
+  - "tests/test_sharding.py"
+  - "tests/test_master_telemetry.py"
+  - "tests/test_reporter.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # LLD-ORCH-001: Master Orchestrator Process Manager & gRPC Synchronization Engine
 

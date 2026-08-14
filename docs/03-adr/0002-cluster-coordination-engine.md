@@ -1,4 +1,4 @@
-﻿---
+---
 id: "ADR-0002"
 title: "Select Cluster Coordination Engine and Privilege Boundaries"
 type: "ADR"
@@ -10,13 +10,18 @@ diataxis_type: "explanation"
 traceability:
   implements_brd: ["BRD-DIST-001"]
   governed_by_adr: []
-  parent_hld: null
-  child_llds: []
-code_references: []
-test_references: []
+  parent_hld: "HLD-DIST-001"
+  child_llds: ["LLD-ORCH-001"]
+code_references:
+  - "setve/orchestrator/sync.py"
+  - "setve/orchestrator/cluster.py"
+test_references:
+  - "tests/test_cluster_sync.py"
+  - "tests/test_sharding.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # ADR-0002: Select Cluster Coordination Engine and Privilege Boundaries
 

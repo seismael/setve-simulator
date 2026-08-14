@@ -1,15 +1,18 @@
 """Tests for GoF AdapterFactory resolution."""
 
-import pytest
 import sys
 
+import pytest
+
 from setve.adapters.factory import AdapterFactory
-from setve.adapters.posix import PosixDirectIOAdapter
 from setve.adapters.io_uring import IoUringTargetAdapter
+from setve.adapters.posix import PosixDirectIOAdapter
+from setve.adapters.s3 import S3TargetAdapter
+from setve.adapters.vector import VectorTargetAdapter
 
 
 def test_factory_resolves_posix() -> None:
-    """Verify factory returns PosixDirectIOAdapter for posix:// scheme."""
+    """Verify factory returns PosixDirectIOAdapter for posix:// and file:// schemes."""
     cls = AdapterFactory.get_adapter_class("posix:///mnt/data")
     assert cls is PosixDirectIOAdapter
 
@@ -27,10 +30,22 @@ def test_factory_resolves_iouring() -> None:
         assert cls is IoUringTargetAdapter
 
 
-def test_factory_raises_not_implemented() -> None:
-    """Verify factory raises error for missing adapters."""
-    with pytest.raises(NotImplementedError):
-        AdapterFactory.get_adapter_class("s3://bucket/test")
+def test_factory_resolves_s3() -> None:
+    """Verify factory returns S3TargetAdapter for s3:// scheme."""
+    cls = AdapterFactory.get_adapter_class("s3://bucket/test")
+    assert cls is S3TargetAdapter
 
+
+def test_factory_resolves_vector() -> None:
+    """Verify factory returns VectorTargetAdapter for vector:// and embedding:// schemes."""
+    cls = AdapterFactory.get_adapter_class("vector://collection/test")
+    assert cls is VectorTargetAdapter
+
+    cls2 = AdapterFactory.get_adapter_class("embedding://collection/test")
+    assert cls2 is VectorTargetAdapter
+
+
+def test_factory_raises_not_implemented() -> None:
+    """Verify factory raises error for unhandled or missing protocols."""
     with pytest.raises(NotImplementedError):
         AdapterFactory.get_adapter_class("nvmeof://10.0.0.1:4420")

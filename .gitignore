@@ -2,9 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
+*.dylib
+*.dll
+*.pyd
 
 # Distribution / packaging
 .Python
@@ -26,7 +27,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Unit test / coverage reports
+# Unit test / coverage / linter caches
 htmlcov/
 .tox/
 .nox/
@@ -39,10 +40,15 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage.report/
 cover/
 
 # Virtual environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -50,15 +56,21 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE / Editor
+# IDE / Editor / OS files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
 
-# SETVE Output files
+# SETVE runtime & simulation outputs
 sim_output*
 *.dat
 *.log
+*.tmp
+*.out
+

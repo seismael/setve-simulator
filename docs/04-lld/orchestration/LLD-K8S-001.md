@@ -14,10 +14,13 @@ traceability:
   child_llds: []
 code_references:
   - "deploy/k8s/operator/controller.py"
-test_references: []
+  - "deploy/helm/setve-cluster/values.yaml"
+test_references:
+  - "tests/test_blueprint.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # LLD-K8S-001: Kubernetes Operator & KEDA Binding Implementations
 

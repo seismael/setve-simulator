@@ -14,10 +14,17 @@ traceability:
   child_llds: []
 code_references:
   - "setve/payload/mutator.py"
-test_references: []
+  - "setve/payload/buffer_pool.py"
+  - "setve/payload/blueprint.py"
+test_references:
+  - "tests/test_mutator.py"
+  - "tests/test_buffer_pool.py"
+  - "tests/test_alignment.py"
+  - "tests/test_blueprint.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # LLD-MUTATOR-001: SIMD Payload Mutator and Entropy Engine
 

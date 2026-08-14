@@ -1,0 +1,77 @@
+# Production Helm Configuration for SETVE Cluster Deployment
+# Reference: HLD-K8S-001 & HLD-ENV-001
+
+global:
+  environment: production
+  clusterDomain: cluster.local
+
+master:
+  replicaCount: 1
+  image:
+    repository: setve/master
+    tag: v0.2.0
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 50051
+    metricsPort: 8123
+  resources:
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    readOnlyRootFilesystem: true
+
+worker:
+  image:
+    repository: setve/worker
+    tag: v0.2.0
+    pullPolicy: IfNotPresent
+  hostIPC: true
+  nodeSelector:
+    setve.io/performance-tier: "baremetal-gpu-storage"
+  tolerations:
+    - key: "performance"
+      operator: "Equal"
+      value: "dedicated"
+      effect: "NoSchedule"
+  resources:
+    limits:
+      cpu: "16"
+      memory: "32Gi"
+      hugepages-2Mi: "8Gi"
+    requests:
+      cpu: "16"
+      memory: "32Gi"
+      hugepages-2Mi: "8Gi"
+  securityContext:
+    privileged: true
+    capabilities:
+      add:
+        - SYS_ADMIN
+        - IPC_LOCK
+        - NET_ADMIN
+
+keda:
+  enabled: true
+  minReplicaCount: 4
+  maxReplicaCount: 128
+  cooldownPeriod: 30
+  pollingInterval: 5
+  triggers:
+    - type: metrics-api
+      metadata:
+        targetValue: "50"
+
+telemetry:
+  clickhouse:
+    endpoint: "clickhouse.setve-telemetry.svc.cluster.local:9000"
+    database: "setve_telemetry"
+  ebpf:
+    enabled: true
+    interface: "eth0"

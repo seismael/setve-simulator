@@ -2,7 +2,6 @@
 """SETVE Environment & Directory Bootstrap Generator."""
 
 from pathlib import Path
-import sys
 
 DIRECTORIES = [
     ".index",
@@ -19,7 +18,9 @@ DIRECTORIES = [
 ]
 
 FILES = {
-    "setve/__init__.py": '"""SETVE: Universal Simulation & Telemetry Validation Engine."""\n__version__ = "0.1.0"\n',
+    "setve/__init__.py": (
+        '"""SETVE: Universal Simulation & Telemetry Validation Engine."""\n__version__ = "0.1.0"\n'
+    ),
     "setve/py.typed": "",
     "setve/adapters/__init__.py": "",
     "setve/payload/__init__.py": "",
@@ -48,7 +49,8 @@ last_validated_date: "2026-08-05"
 # BRD-SETVE-001: Universal High-Throughput Simulation & Telemetry Validation Engine
 
 ## 1. Executive Summary
-Provide continuous data generation and ingestion simulation at $\\ge 8\\text{ GB/s}$ sustained throughput.
+Provide continuous data generation and ingestion simulation at $\\ge 8\\text{ GB/s}$
+sustained throughput.
 """,
     "docs/03-adr/0001-io-uring-direct-io.md": """---
 id: "ADR-0001"
@@ -73,7 +75,8 @@ last_validated_date: "2026-08-05"
 # ADR-0001: Use Linux io_uring for Zero-Copy Direct I/O
 
 ## Context
-High-throughput storage simulation requires kernel-bypass or asynchronous queue submissions to avoid syscall overhead.
+High-throughput storage simulation requires kernel-bypass or asynchronous queue submissions
+to avoid syscall overhead.
 """,
 }
 

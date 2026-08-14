@@ -2,13 +2,14 @@
 """Parses YAML frontmatter across docs/ and builds .index/graph.json for AI Agent RAG."""
 
 import json
-from pathlib import Path
 import re
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any
+
 import yaml
 
 
-def extract_frontmatter(file_path: Path) -> Dict[str, Any]:
+def extract_frontmatter(file_path: Path) -> dict[str, Any]:
     content = file_path.read_text(encoding="utf-8-sig")
     match = re.search(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
     if not match:
@@ -25,7 +26,7 @@ def build_graph() -> None:
     index_dir = Path(".index")
     index_dir.mkdir(exist_ok=True)
 
-    nodes: Dict[str, Dict[str, Any]] = {}
+    nodes: dict[str, dict[str, Any]] = {}
     edges = []
 
     for md_file in docs_dir.rglob("*.md"):

@@ -1,12 +1,13 @@
 """Workload Blueprint Domain Model."""
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
 class WorkloadBlueprint:
     """Domain model representing a declarative SETVE execution plan."""
+
     run_id: str
     target_uri: str
     block_size_bytes: int = 1048576
@@ -16,7 +17,7 @@ class WorkloadBlueprint:
     global_seed: int = 42
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "WorkloadBlueprint":
+    def from_dict(cls, data: dict[str, Any]) -> "WorkloadBlueprint":
         """Parse blueprint from a configuration dictionary (e.g., YAML)."""
         return cls(
             run_id=data.get("run_id", "sim-default-run"),

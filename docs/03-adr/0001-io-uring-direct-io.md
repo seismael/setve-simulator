@@ -15,10 +15,13 @@ traceability:
 code_references:
   - "setve/adapters/io_uring.py"
   - "setve/adapters/posix.py"
-test_references: []
+test_references:
+  - "tests/test_posix_io.py"
+  - "tests/benchmark_adapters.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # ADR-0001: Use Linux io_uring and O_DIRECT for Zero-Copy High-Throughput I/O
 

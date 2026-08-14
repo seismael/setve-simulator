@@ -14,11 +14,18 @@ traceability:
   child_llds: []
 code_references:
   - "setve/adapters/io_uring.py"
+  - "setve/adapters/posix.py"
+  - "setve/adapters/factory.py"
   - "setve/adapters/base.py"
-test_references: []
+test_references:
+  - "tests/test_posix_io.py"
+  - "tests/test_factory.py"
+  - "tests/test_exceptions.py"
+  - "tests/benchmark_adapters.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # LLD-ADAPTER-001: Linux io_uring Target Adapter & Kernel Ring Queue Loop
 

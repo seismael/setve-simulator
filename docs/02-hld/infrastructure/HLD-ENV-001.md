@@ -13,14 +13,13 @@ traceability:
   parent_hld: "HLD-SETVE-001"
   child_llds: []
 code_references:
-  - "deploy/environments/local/"
-  - "deploy/environments/dev/"
-  - "deploy/environments/staging/"
-  - "deploy/environments/prod/"
-test_references: []
+  - "deploy/environments/local/prometheus.yml"
+test_references:
+  - "tests/test_reporter.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # HLD-ENV-001: Multi-Tier Infrastructure & Environment Lifecycle Architecture
 

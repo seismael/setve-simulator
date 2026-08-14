@@ -15,10 +15,12 @@ traceability:
 code_references:
   - "deploy/k8s/operator/controller.py"
   - "deploy/helm/setve-cluster/values.yaml"
-test_references: []
+test_references:
+  - "tests/test_blueprint.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 # HLD-K8S-001: Kubernetes Operator, KEDA Auto-Scaling, & Pod Topology Infrastructure
 
