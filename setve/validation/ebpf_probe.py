@@ -45,4 +45,3 @@ class EBPFProbe:
         """Return aggregate transferred bytes (RX + TX) from trace counters."""
         counters = self.read_counters()
         return counters.rx_bytes + counters.tx_bytes
-

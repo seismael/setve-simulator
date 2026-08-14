@@ -88,4 +88,3 @@ class PySIMDPayloadMutator:
             del self.view
         with contextlib.suppress(BufferError, OSError):
             self.buffer.close()
-

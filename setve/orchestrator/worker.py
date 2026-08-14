@@ -82,7 +82,6 @@ class WorkerExecutionEngine:
             if hasattr(adapter, "close"):
                 adapter.close()
 
-
         actual_duration = max(time.perf_counter() - start_time, 1e-6)
 
         return WorkerTelemetryResult(

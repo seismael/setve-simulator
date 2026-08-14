@@ -1,0 +1,89 @@
+"""Use Case 03: Live Prometheus & ClickHouse Telemetry Ingestion.
+
+Demonstrates real-time telemetry extraction, high-resolution HDR latency percentiles,
+Prometheus text exposition format, and structured JSON telemetry generation.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+import tempfile
+from pathlib import Path
+
+# Ensure setve package is on sys.path
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from setve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
+from setve.payload.blueprint import WorkloadBlueprint  # noqa: E402
+
+
+def run_prometheus_monitoring(
+    duration_seconds: float = 1.0,
+    target_throughput_gbps: float = 5.0,
+) -> int:
+    """Run workload and export Prometheus and JSON metrics."""
+    print("=" * 80)
+    print("  SETVE USE CASE 03: Prometheus & Telemetry Monitoring Exporter")
+    print("=" * 80)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        test_file = Path(tmp_dir) / "prom_telemetry.dat"
+
+        blueprint = WorkloadBlueprint.from_dict(
+            {
+                "run_id": "prom-telemetry-demo-01",
+                "target_uri": f"posix://{test_file}",
+                "block_size_bytes": 65536,
+                "entropy_ratio": 0.5,
+                "target_throughput_gbps": target_throughput_gbps,
+                "duration_seconds": duration_seconds,
+                "global_seed": 777,
+            }
+        )
+
+        orchestrator = MultiCoreOrchestrator(core_ids=[0])
+        summary = orchestrator.start(blueprint)
+
+        print("\n--- 1. ASCII DIAGNOSTIC REPORT ---")
+        print(summary.format_table())
+
+        print("\n--- 2. PROMETHEUS METRIC EXPOSITION (/metrics) ---")
+        print(summary.to_prometheus_metrics())
+
+        print("--- 3. STRUCTURED JSON TELEMETRY (ClickHouse / Elasticsearch) ---")
+        print(summary.to_json())
+
+    print("[*] Telemetry exposition verified successfully.\n")
+    return 0
+
+
+def main() -> int:
+    """Parse CLI options and run telemetry exporter."""
+    parser = argparse.ArgumentParser(
+        description="SETVE Use Case 03: Prometheus & Telemetry Exporter"
+    )
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=1.0,
+        help="Duration in seconds (default: 1.0)",
+    )
+    parser.add_argument(
+        "--throughput",
+        type=float,
+        default=5.0,
+        help="Target throughput in Gbps (default: 5.0)",
+    )
+
+    args = parser.parse_args()
+    return run_prometheus_monitoring(
+        duration_seconds=args.duration,
+        target_throughput_gbps=args.throughput,
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())

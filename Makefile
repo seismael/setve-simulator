@@ -1,22 +1,28 @@
-.PHONY: help install lint typecheck test benchmark docs-index docs-validate clean
+.PHONY: help install lint format typecheck test benchmark usecases docs-index docs-validate clean
 
 PYTHON ?= python3
 
 help:
-	@echo "SETVE Development Commands:"
-	@echo "  make install      Install package and dev dependencies"
-	@echo "  make lint         Run Ruff linter & formatter checks"
-	@echo "  make typecheck    Run Mypy strict type checking"
-	@echo "  make test         Execute test suite"
-	@echo "  make benchmark    Run hot-path throughput benchmarks"
-	@echo "  make docs-index   Rebuild .index/graph.json for AI Agent RAG"
+	@echo "SETVE Development & Automation Commands:"
+	@echo "  make install        Install package and dev dependencies in editable mode"
+	@echo "  make lint           Run Ruff linter checks across all source directories"
+	@echo "  make format         Auto-format codebase with Ruff"
+	@echo "  make typecheck      Run Mypy strict type checking"
+	@echo "  make test           Execute complete automated test suite (40 tests)"
+	@echo "  make benchmark      Run comprehensive multi-subsystem benchmark suite"
+	@echo "  make usecases       Execute all standalone production use case recipes"
+	@echo "  make docs-validate  Validate YAML frontmatter and document DAG references"
+	@echo "  make docs-index     Rebuild .index/graph.json for AI Agent RAG"
+	@echo "  make clean          Remove compiled bytecode, build artifacts, and caches"
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
 
 lint:
-	ruff check setve/ tests/ scripts/
-	ruff format --check setve/ tests/ scripts/
+	ruff check setve/ tests/ scripts/ deploy/ usecases/
+
+format:
+	ruff format setve/ tests/ scripts/ deploy/ usecases/
 
 typecheck:
 	mypy setve/ tests/ scripts/
@@ -25,14 +31,22 @@ test:
 	pytest tests/ -v
 
 benchmark:
-	python3 tests/benchmark_adapters.py
+	$(PYTHON) tests/benchmark_suite.py
+
+usecases:
+	$(PYTHON) usecases/usecase_01_storage_stress.py
+	$(PYTHON) usecases/usecase_02_dedup_compression.py
+	$(PYTHON) usecases/usecase_03_prometheus_monitoring.py
+	$(PYTHON) usecases/usecase_04_ebpf_triangulation.py
+	$(PYTHON) usecases/usecase_05_ai_vector_s3.py
 
 docs-index:
-	python3 scripts/build_doc_graph.py
+	$(PYTHON) scripts/build_doc_graph.py
 
 docs-validate:
-	python3 scripts/validate_docs.py
+	$(PYTHON) scripts/validate_docs.py
 
 clean:
 	rm -rf build/ dist/ *.egg-info .mypy_cache .pytest_cache .ruff_cache
 	find . -type d -name "__pycache__" -exec rm -rf {} +
+

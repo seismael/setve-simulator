@@ -63,4 +63,3 @@ class BufferPool:
             with contextlib.suppress(BufferError, OSError):
                 m.close()
         self._mmaps.clear()
-

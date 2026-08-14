@@ -109,6 +109,26 @@
         "tests/test_reporter.py"
       ]
     },
+    "LLD-VAL-001": {
+      "path": "docs\\04-lld\\validation\\LLD-VAL-001.md",
+      "title": "Telemetry Metric Collection, HDR Histogram, eBPF Probe & Divergence Evaluator",
+      "type": "LLD",
+      "status": "APPROVED",
+      "domain": "data-plane",
+      "layer": "compute-engine",
+      "code_references": [
+        "setve/validation/metric_collector.py",
+        "setve/validation/reporter.py",
+        "setve/validation/ebpf_probe.py",
+        "setve/validation/evaluator.py"
+      ],
+      "test_references": [
+        "tests/test_metric_collector.py",
+        "tests/test_reporter.py",
+        "tests/test_telemetry_evaluator.py",
+        "tests/test_master_telemetry.py"
+      ]
+    },
     "HLD-SETVE-001": {
       "path": "docs\\02-hld\\compute-engine\\HLD-SETVE-001.md",
       "title": "Universal Simulation Engine System Topology & Data Plane Architecture",
@@ -255,6 +275,16 @@
     {
       "source": "LLD-ORCH-001",
       "target": "ADR-0002",
+      "relation": "governed_by"
+    },
+    {
+      "source": "LLD-VAL-001",
+      "target": "BRD-SETVE-001",
+      "relation": "implements"
+    },
+    {
+      "source": "LLD-VAL-001",
+      "target": "ADR-0001",
       "relation": "governed_by"
     },
     {

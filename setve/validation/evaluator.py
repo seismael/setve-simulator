@@ -17,12 +17,15 @@ class DivergenceResult:
 class TelemetryEvaluator:
     """Out-of-band telemetry cross-evaluator computing metric skew."""
 
+    def __init__(self, skew_threshold_percent: float = 0.1) -> None:
+        self.skew_threshold_percent = skew_threshold_percent
+
     def evaluate(self, client_bytes: int, probe_bytes: int) -> DivergenceResult:
         """Calculate divergence between client metrics and kernel ground truth."""
         delta = abs(client_bytes - probe_bytes)
         denom = max(probe_bytes, 1)
         divergence_pct = (delta / denom) * 100.0
-        is_valid = divergence_pct <= 0.1  # Target <= 0.1% divergence
+        is_valid = divergence_pct <= self.skew_threshold_percent
 
         return DivergenceResult(
             client_bytes=client_bytes,

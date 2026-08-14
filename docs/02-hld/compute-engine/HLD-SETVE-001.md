@@ -11,7 +11,7 @@ traceability:
   implements_brd: ["BRD-SETVE-001"]
   governed_by_adr: ["ADR-0001", "ADR-0002"]
   parent_hld: null
-  child_llds: ["LLD-MUTATOR-001", "LLD-ADAPTER-001"]
+  child_llds: ["LLD-MUTATOR-001", "LLD-ADAPTER-001", "LLD-VAL-001"]
 code_references:
   - "setve/orchestrator/master.py"
   - "setve/payload/mutator.py"
@@ -21,6 +21,7 @@ test_references:
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
+
 
 
 # HLD-SETVE-001: Universal Simulation Engine — System Topology & Data Plane Architecture

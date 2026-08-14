@@ -38,8 +38,13 @@ class AdapterFactory:
         if scheme in ("vector", "embedding"):
             return VectorTargetAdapter
 
-        if scheme == "nvmeof":
-            raise NotImplementedError("NVMe-oF Target Adapter is not yet implemented.")
+        raise NotImplementedError(
+            f"Unsupported target URI scheme '{scheme}'. "
+            "Supported schemes: posix://, file://, iouring://, s3://, vector://"
+        )
 
-        # Default fallback
-        return PosixDirectIOAdapter
+    @classmethod
+    def create(cls, target_uri: str, **kwargs: object) -> TargetAdapter:
+        """Instantiate and return target adapter for URI scheme."""
+        adapter_cls = cls.get_adapter_class(target_uri)
+        return adapter_cls(**kwargs)  # type: ignore[arg-type]

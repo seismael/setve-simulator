@@ -230,3 +230,16 @@ class IoUringTargetAdapter(TargetAdapter):
     def close(self):
         io_uring_queue_exit(self.ring)
 ```
+
+---
+
+## 7. Production Use Cases & Execution Catalog
+
+Production-ready use case scenarios are maintained in the [`usecases/`](file:///c:/dev/projects/setve-simulator/usecases) package:
+
+1. **`usecases/usecase_01_storage_stress.py`**: Zero-copy POSIX Direct I/O (`O_DIRECT`) multi-core storage saturation.
+2. **`usecases/usecase_02_dedup_compression.py`**: In-place AVX-512 SIMD entropy sweeps for deduplication and compression validation.
+3. **`usecases/usecase_03_prometheus_monitoring.py`**: Real-time telemetry extraction, HDR percentiles ($p_{50}, p_{90}, p_{99}$), and Prometheus text exposition.
+4. **`usecases/usecase_04_ebpf_triangulation.py`**: Out-of-band kernel/hardware trace counter triangulation ($\le 0.1\%$ SLA).
+5. **`usecases/usecase_05_ai_vector_s3.py`**: High-density AI embedding batch upserts & multipart S3 object streaming.
+

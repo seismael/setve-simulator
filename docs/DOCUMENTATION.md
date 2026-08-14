@@ -219,6 +219,22 @@ To ensure deterministic navigation for developers and AI agents, every requireme
 
 $$\text{BRD (Requirement)} \longrightarrow \text{HLD (Architecture)} \longrightarrow \text{ADR (Decision)} \longrightarrow \text{LLD (Implementation)} \longrightarrow \text{Code / Unit Test}$$
 
+```text
+                                 [ BRD-SETVE-001 ]        [ BRD-DIST-001 ]
+                                         │                       │
+                       ┌─────────────────┴───────────────────────┴─────────────────┐
+                       ▼                                                           ▼
+                [ HLD-SETVE-001 ]                                           [ HLD-DIST-001 ]
+                       │                                                           │
+          ┌────────────┼────────────┐                                 ┌────────────┴────────────┐
+          ▼            ▼            ▼                                 ▼                         ▼
+     [ ADR-0001 ]  [ ADR-0002 ] [ HLD-ENV-001 ]                  [ HLD-K8S-001 ]          [ LLD-ORCH-001 ]
+          │                         │                                 │
+     ┌────┴────────────┐            │                                 │
+     ▼                 ▼            ▼                                 ▼
+[ LLD-ADAPTER-001 ][ LLD-MUTATOR-001 ][ LLD-VAL-001 ]             [ LLD-K8S-001 ]
+```
+
 1. **Token-Efficient RAG Strategy (ADX):** Agents MUST prioritize token efficiency. 
    - **Do NOT** read `DOCUMENTATION.md` unless generating a completely new document from templates. 
    - **Do NOT** read files sequentially. 

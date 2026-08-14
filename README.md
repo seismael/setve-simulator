@@ -1,10 +1,13 @@
 # SETVE: Universal Simulation & Telemetry Validation Engine
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version: v0.2.0](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/seismael/setve-simulator/releases)
 [![Build Status](https://github.com/seismael/setve-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
 [![Doc Graph](https://github.com/seismael/setve-simulator/actions/workflows/doc_graph_check.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checking: mypy](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
+
 
 **SETVE** is a platform-agnostic, multi-gigabyte-per-second load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems ($\ge 8\text{ GB/s}$ per node to multi-TB/s clusters).
 
@@ -13,10 +16,26 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 ---
 
 ## Key Architecture & Core Specifications
-
 - **[AGENTS.md](file:///c:/dev/projects/setve-simulator/AGENTS.md)**: Dynamic governance rules, zero-allocation constraints, alignment guardrails, and AI agent execution protocol.
 - **[SPEC.md](file:///c:/dev/projects/setve-simulator/SPEC.md)**: Core technical design, kernel-bypass drivers (`io_uring`), SIMD payload mutators, and multi-core orchestration blueprints.
 - **[docs/DOCUMENTATION.md](file:///c:/dev/projects/setve-simulator/docs/DOCUMENTATION.md)**: Dual-indexed documentation taxonomy (Arc42 / C4 / Diátaxis / IEEE 42010), frontmatter schemas, and $\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$ traceability DAG.
+
+```text
+                                 [ BRD-SETVE-001 ]        [ BRD-DIST-001 ]
+                                         │                       │
+                       ┌─────────────────┴───────────────────────┴─────────────────┐
+                       ▼                                                           ▼
+                [ HLD-SETVE-001 ]                                           [ HLD-DIST-001 ]
+                       │                                                           │
+          ┌────────────┼────────────┐                                 ┌────────────┴────────────┐
+          ▼            ▼            ▼                                 ▼                         ▼
+     [ ADR-0001 ]  [ ADR-0002 ] [ HLD-ENV-001 ]                  [ HLD-K8S-001 ]          [ LLD-ORCH-001 ]
+          │                         │                                 │
+     ┌────┴────────────┐            │                                 │
+     ▼                 ▼            ▼                                 ▼
+[ LLD-ADAPTER-001 ][ LLD-MUTATOR-001 ][ LLD-VAL-001 ]             [ LLD-K8S-001 ]
+```
+
 
 ---
 
@@ -104,10 +123,18 @@ setve/
 │   ├── payload/               # SIMD mutator, buffer pool, workload blueprints
 │   ├── orchestrator/          # Master controller, core-pinned worker, sync servicer
 │   └── validation/            # HDR histograms, Prometheus reporter, eBPF probe
-└── tests/                     # Verification Suite (34 Unit & Integration Tests)
+├── usecases/                  # Standalone Production Use Cases & Scenarios
+│   ├── README.md              # Scenario execution guide
+│   ├── usecase_01_storage_stress.py       # NVMe & Direct I/O Saturation
+│   ├── usecase_02_dedup_compression.py    # Inline Deduplication & SIMD Sweeps
+│   ├── usecase_03_prometheus_monitoring.py# Live Prometheus & JSON Exporter
+│   ├── usecase_04_ebpf_triangulation.py   # Out-of-Band Skew Triangulation
+│   └── usecase_05_ai_vector_s3.py         # AI Embedding & S3 Multipart
+└── tests/                     # Verification Suite (40 Unit & Integration Tests)
     ├── benchmark_suite.py     # Multi-subsystem performance benchmark suite
     ├── benchmark_adapters.py  # Hot-path adapter sanity benchmark
-    └── test_*.py              # Comprehensive test modules
+    ├── test_usecases.py       # End-to-end use case verification suite
+    └── test_*.py              # Comprehensive unit/integration tests
 ```
 
 ---
@@ -119,19 +146,27 @@ setve/
 pip install -e ".[dev]"
 
 # 2. Run static analysis and formatting quality gates
-ruff check setve/ tests/ scripts/ deploy/
-ruff format --check setve/ tests/ scripts/ deploy/
+ruff check setve/ tests/ scripts/ deploy/ usecases/
+ruff format --check setve/ tests/ scripts/ deploy/ usecases/
 
-# 3. Execute the comprehensive test suite (34 tests)
+# 3. Execute the comprehensive test suite (40 tests)
 pytest -v
 
 # 4. Run the multi-subsystem benchmark suite
 python tests/benchmark_suite.py
 
-# 5. Validate documentation DAG and regenerate RAG index
+# 5. Run production use case scenarios
+python usecases/usecase_01_storage_stress.py
+python usecases/usecase_02_dedup_compression.py
+python usecases/usecase_03_prometheus_monitoring.py
+python usecases/usecase_04_ebpf_triangulation.py
+python usecases/usecase_05_ai_vector_s3.py
+
+# 6. Validate documentation DAG and regenerate RAG index
 python scripts/validate_docs.py
 python scripts/build_doc_graph.py
 ```
+
 
 ---
 
@@ -183,4 +218,53 @@ print(summary.to_prometheus_metrics())
 | Metric Skew:    0.0000% (0 bytes delta)                                          |
 +==================================================================================+
 ```
+
+---
+
+## Standalone Production Use Cases
+
+The [`usecases/`](file:///c:/dev/projects/setve-simulator/usecases/README.md) catalog provides standalone executable scenario recipes:
+
+| Scenario | Script Path | Description |
+| :--- | :--- | :--- |
+| **01. NVMe Direct I/O** | [`usecases/usecase_01_storage_stress.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_01_storage_stress.py) | Saturates local NVMe block devices via zero-copy `O_DIRECT`. |
+| **02. Dedup & Compression** | [`usecases/usecase_02_dedup_compression.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_02_dedup_compression.py) | Benchmarks SIMD payload mutator across compressibility sweeps ($15.5\text{ GB/s}$). |
+| **03. Prometheus Monitoring** | [`usecases/usecase_03_prometheus_monitoring.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_03_prometheus_monitoring.py) | Emits live Prometheus `/metrics` exposition and ClickHouse JSON telemetry. |
+| **04. eBPF Triangulation** | [`usecases/usecase_04_ebpf_triangulation.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_04_ebpf_triangulation.py) | Mathematically audits client metrics vs kernel interface wire counters ($\le 0.1\%$). |
+| **05. AI Vector & S3** | [`usecases/usecase_05_ai_vector_s3.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_05_ai_vector_s3.py) | Simulates parallel vector embedding upserts and S3 multipart streaming. |
+
+---
+
+## Deployment & Infrastructure Topologies
+
+
+SETVE supports four deployment topologies documented in [`deploy/`](file:///c:/dev/projects/setve-simulator/deploy/README.md):
+
+1. **Local Development ([`deploy/environments/local/`](file:///c:/dev/projects/setve-simulator/deploy/environments/local))**: Docker Compose stack with local Prometheus and Grafana telemetry sinks (`docker compose -f deploy/environments/local/docker-compose.local.yml up -d`).
+2. **Production Kubernetes ([`deploy/helm/`](file:///c:/dev/projects/setve-simulator/deploy/helm/README.md))**: Production Helm 3 chart (`helm install setve-cluster deploy/helm/setve-cluster`) with CPU core-pinning (`cpuset`), HostPath NVMe mounts, and `ServiceMonitor` resources.
+3. **Cloud-Native Operator ([`deploy/k8s/`](file:///c:/dev/projects/setve-simulator/deploy/k8s/README.md))**: Kopf-based Kubernetes CRD operator managing `SETVECluster` resources with dynamic KEDA autoscaling.
+4. **Multi-Tier Lifecycle ([`deploy/environments/`](file:///c:/dev/projects/setve-simulator/deploy/environments/README.md))**: Infrastructure automation spanning `local` ($\le 10\text{ Gbps}$), `dev` ($25\text{ Gbps}$), `staging` ($100\text{ Gbps}$), and `prod` ($\ge 1\text{ TB/s}$).
+
+---
+
+## Community & Contributing
+
+We welcome contributions from systems engineers, storage architects, and data-plane developers!
+
+- **[CONTRIBUTING.md](file:///c:/dev/projects/setve-simulator/CONTRIBUTING.md)**: Developer setup, coding standards, architectural guardrails, and PR guidelines.
+- **[CODE_OF_CONDUCT.md](file:///c:/dev/projects/setve-simulator/CODE_OF_CONDUCT.md)**: Contributor Covenant standards.
+- **[SECURITY.md](file:///c:/dev/projects/setve-simulator/SECURITY.md)**: Security policy and vulnerability disclosure procedures.
+
+---
+
+## License & Copyright
+
+SETVE is distributed under the **[MIT License](file:///c:/dev/projects/setve-simulator/LICENSE)**.
+
+```text
+Copyright (c) 2026 SETVE Contributors
+Licensed under the MIT License. See LICENSE file for full details.
+```
+
+
 
