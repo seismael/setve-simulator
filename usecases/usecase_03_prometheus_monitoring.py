@@ -7,8 +7,10 @@ Prometheus text exposition format, and structured JSON telemetry generation.
 from __future__ import annotations
 
 import argparse
+import http.server
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 # Ensure setve package is on sys.path
@@ -20,11 +22,39 @@ from setve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
 from setve.payload.blueprint import WorkloadBlueprint  # noqa: E402
 
 
+class TelemetryHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+    """Serve Prometheus text exposition format on /metrics and JSON on /telemetry."""
+
+    prom_data: str = ""
+    json_data: str = ""
+
+    def do_GET(self) -> None:
+        if self.path in ("/metrics", "/"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(self.prom_data.encode("utf-8"))
+        elif self.path in ("/telemetry", "/json"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(self.json_data.encode("utf-8"))
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"404 Not Found")
+
+    def log_message(self, format_str: str, *args: object) -> None:
+        # Suppress noisy HTTP request logging in terminal
+        pass
+
+
 def run_prometheus_monitoring(
     duration_seconds: float = 1.0,
     target_throughput_gbps: float = 5.0,
     output_prom: str | None = None,
     output_json: str | None = None,
+    serve_port: int | None = None,
 ) -> int:
     """Run workload and export Prometheus and JSON metrics."""
     print("=" * 80)
@@ -68,6 +98,19 @@ def run_prometheus_monitoring(
             Path(output_json).write_text(json_text, encoding="utf-8")
             print(f"[+] Exported JSON telemetry to:       {output_json}")
 
+        if serve_port is not None:
+            TelemetryHTTPRequestHandler.prom_data = prom_text
+            TelemetryHTTPRequestHandler.json_data = json_text
+            server = http.server.HTTPServer(("127.0.0.1", serve_port), TelemetryHTTPRequestHandler)
+            server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+            server_thread.start()
+            print(f"\n[+] Live Telemetry Server Active at http://127.0.0.1:{serve_port}")
+            print(f"    -> Prometheus Scrape:  http://127.0.0.1:{serve_port}/metrics")
+            print(f"    -> JSON Telemetry:     http://127.0.0.1:{serve_port}/telemetry")
+            print("    -> Press Ctrl+C or let test finalize.\n")
+            server.shutdown()
+            server.server_close()
+
     print("\n[*] Telemetry exposition verified successfully.\n")
     return 0
 
@@ -101,6 +144,12 @@ def main() -> int:
         default=None,
         help="Optional path to write structured JSON telemetry file (.json)",
     )
+    parser.add_argument(
+        "--serve-port",
+        type=int,
+        default=None,
+        help="Optional HTTP port to serve live /metrics and /telemetry endpoints (e.g. 9100)",
+    )
 
     args = parser.parse_args()
     return run_prometheus_monitoring(
@@ -108,6 +157,7 @@ def main() -> int:
         target_throughput_gbps=args.throughput,
         output_prom=args.output_prom,
         output_json=args.output_json,
+        serve_port=args.serve_port,
     )
 
 

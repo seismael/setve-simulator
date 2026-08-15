@@ -8,7 +8,9 @@ Simulates periodic high-intensity I/O micro-bursts:
 
 import argparse
 import asyncio
+import contextlib
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -27,95 +29,127 @@ async def run_microburst_simulation(
     steady_ops: int = 2000,
     burst_cycles: int = 5,
     burst_intensity: int = 500,
-    target_uri: str = "posix:///tmp/microburst_target.dat",
+    target_uri: str | None = None,
 ) -> int:
     """Execute micro-burst traffic generation and tail-latency HDR analysis."""
     print("=" * 80)
     print("  SETVE USE CASE 10: Tail-Latency Micro-Burst & Jitter Analysis")
     print("=" * 80)
 
-    adapter = AdapterFactory.create(target_uri)
-    await adapter.initialize({"direct_io": False})
-    target = TargetDescriptor(endpoint_uri=target_uri, resource_path="microburst_target.dat")
+    cleanup_tmp = False
+    tmp_dir = None
+    if not target_uri:
+        tmp_dir = tempfile.TemporaryDirectory()
+        target_file = Path(tmp_dir.name) / "microburst_target.dat"
+        target_uri = f"posix://{target_file}"
+        cleanup_tmp = True
+        print(f"[*] Target URI:                   {target_uri} (Temporary Storage)")
+    else:
+        print(f"[*] Target URI:                   {target_uri}")
 
-    pool = BufferPool(buffer_count=8, buffer_size=4096)
-    steady_collector = MetricCollector()
-    burst_collector = MetricCollector()
-    combined_collector = MetricCollector()
-
-    print(f"[*] Running steady-state baseline ({steady_ops:,} ops)...")
     try:
-        for i in range(steady_ops):
-            buf = pool.acquire(i)
-            t0 = time.perf_counter_ns()
-            w = await adapter.write(target, offset=(i * 4096) % 10485760, payload=buf)
-            lat = time.perf_counter_ns() - t0
-            steady_collector.record_latency(lat)
-            steady_collector.record_bytes(w)
-            combined_collector.record_latency(lat)
-            combined_collector.record_bytes(w)
-            await asyncio.sleep(0.00005)
+        adapter = AdapterFactory.create(target_uri)
+        await adapter.initialize({"direct_io": False})
+        target = TargetDescriptor(endpoint_uri=target_uri, resource_path="microburst_target.dat")
 
-        print(
-            f"[*] Injecting {burst_cycles} micro-burst cycles "
-            f"({burst_intensity} ops/burst, no pacing)..."
-        )
-        for _cycle in range(burst_cycles):
-            for b in range(burst_intensity):
-                buf = pool.acquire(b)
+        pool = BufferPool(buffer_count=8, buffer_size=4096)
+        steady_collector = MetricCollector()
+        burst_collector = MetricCollector()
+        combined_collector = MetricCollector()
+
+        print(f"[*] Running steady-state baseline ({steady_ops:,} ops)...")
+        try:
+            for i in range(steady_ops):
+                buf = pool.acquire(i % pool.buffer_count)
                 t0 = time.perf_counter_ns()
-                w = await adapter.write(target, offset=(b * 4096) % 10485760, payload=buf)
+                w = await adapter.write(target, offset=(i * 4096) % 10485760, payload=buf)
                 lat = time.perf_counter_ns() - t0
-                burst_collector.record_latency(lat)
-                burst_collector.record_bytes(w)
+                steady_collector.record_latency(lat)
+                steady_collector.record_bytes(w)
                 combined_collector.record_latency(lat)
                 combined_collector.record_bytes(w)
-            await asyncio.sleep(0.01)  # Inter-burst lull
+                await asyncio.sleep(0.00005)
 
+            print(
+                f"[*] Injecting {burst_cycles} micro-burst cycles "
+                f"({burst_intensity} ops/burst, unpaced back-to-back)..."
+            )
+            for _cycle in range(burst_cycles):
+                for b in range(burst_intensity):
+                    buf = pool.acquire(b % pool.buffer_count)
+                    t0 = time.perf_counter_ns()
+                    w = await adapter.write(target, offset=(b * 4096) % 10485760, payload=buf)
+                    lat = time.perf_counter_ns() - t0
+                    burst_collector.record_latency(lat)
+                    burst_collector.record_bytes(w)
+                    combined_collector.record_latency(lat)
+                    combined_collector.record_bytes(w)
+                await asyncio.sleep(0.01)  # Inter-burst lull
+
+        finally:
+            pool.close()
+
+        # Percentiles in milliseconds
+        p50_s = steady_collector.percentile_ms(0.50)
+        p99_s = steady_collector.percentile_ms(0.99)
+        p999_s = steady_collector.percentile_ms(0.999)
+
+        p50_c = combined_collector.percentile_ms(0.50)
+        p90_c = combined_collector.percentile_ms(0.90)
+        p99_c = combined_collector.percentile_ms(0.99)
+        p999_c = combined_collector.percentile_ms(0.999)
+        degrad_factor = p999_c / max(p50_s, 0.001)
+
+        # Render ASCII Latency Distribution Histogram
+        print(
+            "\n+--------------------------------------------------------------------------------+"
+        )
+        print("| 64-BUCKET LOGARITHMIC HDR HISTOGRAM TAIL LATENCY REPORT                        |")
+        print("+--------------------------------------------------------------------------------+")
+        print(f"| Steady-State Baseline (p50):    {p50_s:>16.3f} ms                           |")
+        print(f"| Steady-State Baseline (p99):    {p99_s:>16.3f} ms                           |")
+        print(f"| Steady-State Baseline (p99.9):  {p999_s:>16.3f} ms                           |")
+        print("+--------------------------------------------------------------------------------+")
+        print(f"| Micro-Burst Contended (p50):    {p50_c:>16.3f} ms                           |")
+        print(f"| Micro-Burst Contended (p90):    {p90_c:>16.3f} ms                           |")
+        print(f"| Micro-Burst Contended (p99):    {p99_c:>16.3f} ms                           |")
+        print(f"| Micro-Burst Tail-Spike (p99.9): {p999_c:>16.3f} ms                           |")
+        deg_str = f"{degrad_factor:.2f}x"
+        print(f"| Tail Degradation (p99.9 / p50): {deg_str:>16}                            |")
+        print("+--------------------------------------------------------------------------------+")
+
+        # Visual ASCII Histogram Distribution with Cumulative Percentile Annotations
+        print("\n--- LATENCY HDR DENSITY PROFILE ---")
+        active_buckets = [
+            (idx, count) for idx, count in enumerate(combined_collector._buckets) if count > 0
+        ]
+        max_count = max((c for _, c in active_buckets), default=1)
+        total_recorded = combined_collector.total_ops
+        cum_count = 0
+        for idx, count in active_buckets:
+            cum_count += count
+            cum_pct = (cum_count / max(1, total_recorded)) * 100.0
+            ns_bound = 1 << idx
+            ms_bound = ns_bound / 1e6
+            bar_len = int((count / max_count) * 35)
+            bar = "#" * max(1, bar_len)
+            tag = (
+                " [p50]"
+                if cum_pct >= 50.0 and cum_pct - (count / total_recorded * 100) < 50.0
+                else " [p90]"
+                if cum_pct >= 90.0 and cum_pct - (count / total_recorded * 100) < 90.0
+                else " [p99]"
+                if cum_pct >= 99.0 and cum_pct - (count / total_recorded * 100) < 99.0
+                else ""
+            )
+            print(f"  <={ms_bound:>8.3f} ms [{count:>5} ops | {cum_pct:>5.1f}%] | {bar:<35}{tag}")
+        print("------------------------------------\n")
+
+        return 0
     finally:
-        pool.close()
-
-    # Percentiles in milliseconds
-    p50_s = steady_collector.percentile_ms(0.50)
-    p99_s = steady_collector.percentile_ms(0.99)
-    p999_s = steady_collector.percentile_ms(0.999)
-
-    p50_c = combined_collector.percentile_ms(0.50)
-    p90_c = combined_collector.percentile_ms(0.90)
-    p99_c = combined_collector.percentile_ms(0.99)
-    p999_c = combined_collector.percentile_ms(0.999)
-    degrad_factor = p999_c / max(p50_s, 0.001)
-
-    # Render ASCII Latency Distribution Histogram
-    print("\n+--------------------------------------------------------------------------------+")
-    print("| 64-BUCKET LOGARITHMIC HDR HISTOGRAM TAIL LATENCY REPORT                        |")
-    print("+--------------------------------------------------------------------------------+")
-    print(f"| Steady-State Baseline (p50):    {p50_s:>16.3f} ms                           |")
-    print(f"| Steady-State Baseline (p99):    {p99_s:>16.3f} ms                           |")
-    print(f"| Steady-State Baseline (p99.9):  {p999_s:>16.3f} ms                           |")
-    print("+--------------------------------------------------------------------------------+")
-    print(f"| Micro-Burst Contended (p50):    {p50_c:>16.3f} ms                           |")
-    print(f"| Micro-Burst Contended (p90):    {p90_c:>16.3f} ms                           |")
-    print(f"| Micro-Burst Contended (p99):    {p99_c:>16.3f} ms                           |")
-    print(f"| Micro-Burst Tail-Spike (p99.9): {p999_c:>16.3f} ms                           |")
-    print(f"| Tail Degradation (p99.9 / p50): {degrad_factor:>16.2f}x                            |")
-    print("+--------------------------------------------------------------------------------+")
-
-    # Visual ASCII Histogram Distribution
-    print("\n--- LATENCY HDR DENSITY PROFILE ---")
-    active_buckets = [
-        (idx, count) for idx, count in enumerate(combined_collector._buckets) if count > 0
-    ]
-    max_count = max((c for _, c in active_buckets), default=1)
-    for idx, count in active_buckets:
-        ns_bound = 1 << idx
-        ms_bound = ns_bound / 1e6
-        bar_len = int((count / max_count) * 40)
-        bar = "#" * max(1, bar_len)
-        print(f"  <={ms_bound:>8.3f} ms [{count:>5} ops] | {bar}")
-    print("------------------------------------\n")
-
-    return 0
+        if cleanup_tmp and tmp_dir is not None:
+            with contextlib.suppress(Exception):
+                tmp_dir.cleanup()
 
 
 def main() -> int:
@@ -144,8 +178,8 @@ def main() -> int:
     parser.add_argument(
         "--target-uri",
         type=str,
-        default="posix:///tmp/microburst_target.dat",
-        help="Target storage URI (default: posix:///tmp/microburst_target.dat)",
+        default=None,
+        help="Target storage URI (default: temporary storage file)",
     )
     args = parser.parse_args()
 

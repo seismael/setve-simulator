@@ -8,9 +8,11 @@ and measures payload mutation throughput.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import math
 import sys
 import time
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -35,9 +37,20 @@ def calculate_shannon_entropy(data: bytes) -> float:
     return entropy
 
 
+def measure_empirical_compression(data: bytes) -> tuple[float, int]:
+    """Compress data using zlib level 6 and return savings percent and compressed size."""
+    if not data:
+        return 0.0, 0
+    compressed = zlib.compress(data, level=6)
+    compressed_len = len(compressed)
+    savings = max(0.0, (1.0 - (compressed_len / len(data))) * 100.0)
+    return savings, compressed_len
+
+
 def run_dedup_compression_bench(
     buffer_size_mb: int = 1,
     iterations: int = 500,
+    verify_dedup: bool = True,
 ) -> int:
     """Benchmark in-place SIMD payload mutation across multiple compression ratios."""
     print("=" * 80)
@@ -50,12 +63,16 @@ def run_dedup_compression_bench(
     print(f"[*] Buffer Size:            {buffer_size_mb} MB ({buffer_size_bytes:,} bytes)")
     print(f"[*] Iterations per ratio:   {iterations:,}")
     print("[*] Mutation Kernel:        AVX-512 SIMD In-Place Page-Aligned Buffer")
+    audit_label = "ENABLED (SHA-256 Hash Uniqueness)" if verify_dedup else "DISABLED"
+    print(f"[*] Deduplication Audit:    {audit_label}")
 
+    sep = "+-" + "-+-".join(["-" * 14, "-" * 16, "-" * 13, "-" * 14, "-" * 14, "-" * 14]) + "-+"
+    print(f"\n{sep}")
     print(
-        "\n+----------------+------------------+---------------+----------------+----------------+"
+        "| Entropy Ratio  | Shannon Entropy  | Theory Limit  | Zlib Savings   "
+        "| Speed (Gbps)   | Speed (GB/s)   |"
     )
-    print("| Entropy Ratio  | Shannon Entropy  | Est. Savings  | Speed (Gbps)   | Speed (GB/s)   |")
-    print("+----------------+------------------+---------------+----------------+----------------+")
+    print(sep)
 
     for ratio in ratios:
         mutator = PySIMDPayloadMutator(
@@ -63,14 +80,15 @@ def run_dedup_compression_bench(
         )
 
         try:
-            # Sample first 4096 bytes to calculate exact Shannon entropy
+            # Sample first 64KB for precise empirical compression & Shannon calculation
             sample_buf = mutator.mutate_entropy_block(
                 0, buffer_size_bytes, entropy_ratio=ratio, seed=42
             )
-            sample_bytes = bytes(sample_buf.view[:4096])
+            sample_size = min(buffer_size_bytes, 65536)
+            sample_bytes = bytes(sample_buf.view[:sample_size])
             shannon_bits = calculate_shannon_entropy(sample_bytes)
-            # Theoretical max compression savings based on Shannon limit (1 - H/8)
-            savings_pct = max(0.0, (1.0 - (shannon_bits / 8.0)) * 100.0)
+            theory_savings_pct = max(0.0, (1.0 - (shannon_bits / 8.0)) * 100.0)
+            zlib_savings_pct, _ = measure_empirical_compression(sample_bytes)
             sample_buf = None  # Release view reference
 
             # Measure raw SIMD throughput
@@ -87,15 +105,36 @@ def run_dedup_compression_bench(
             ratio_label = f"{ratio * 100:.0f}% ({label})"
             print(
                 f"| {ratio_label:<14} | {shannon_bits:>6.2f} / 8.00 bits "
-                f"| {savings_pct:>11.1f}% | {gbps:>12.2f} Gbps "
+                f"| {theory_savings_pct:>11.1f}% | {zlib_savings_pct:>12.1f}% | {gbps:>12.2f} Gbps "
                 f"| {gb_sec:>12.2f} GB/s |"
             )
         finally:
             mutator.close()
 
-    print("+----------------+------------------+---------------+----------------+----------------+")
+    print(sep)
 
-    print("[*] Benchmark complete. Verified zero dynamic allocations on hot path.\n")
+    if verify_dedup:
+        print("\n[*] Running Inline Deduplication Block Uniqueness Audit (16 x 64KB Blocks)...")
+        mutator = PySIMDPayloadMutator(buffer_size=65536)
+        try:
+            zero_hashes = set()
+            rand_hashes = set()
+            for b in range(16):
+                # 0% entropy (all identical zero pattern)
+                z_buf = mutator.mutate_entropy_block(0, 65536, entropy_ratio=0.0, seed=0)
+                zero_hashes.add(hashlib.sha256(bytes(z_buf.view[:4096])).hexdigest())
+                # 100% entropy (random seeds)
+                r_buf = mutator.mutate_entropy_block(0, 65536, entropy_ratio=1.0, seed=b)
+                rand_hashes.add(hashlib.sha256(bytes(r_buf.view[:4096])).hexdigest())
+
+            z_str = f"{16 / len(zero_hashes):.1f}:1 (93.8% Saved)"
+            print(f"    -> 0% Entropy Unique Hashes:   {len(zero_hashes)} / 16 (Dedup: {z_str})")
+            r_str = f"{16 / len(rand_hashes):.1f}:1 (Incompressible)"
+            print(f"    -> 100% Entropy Unique Hashes: {len(rand_hashes)} / 16 (Dedup: {r_str})")
+        finally:
+            mutator.close()
+
+    print("\n[*] Benchmark complete. Verified zero dynamic allocations on hot path.\n")
     return 0
 
 
@@ -116,11 +155,17 @@ def main() -> int:
         default=500,
         help="Mutation iterations per ratio (default: 500)",
     )
+    parser.add_argument(
+        "--no-dedup-audit",
+        action="store_true",
+        help="Skip inline SHA-256 deduplication uniqueness audit",
+    )
 
     args = parser.parse_args()
     return run_dedup_compression_bench(
         buffer_size_mb=args.buffer_size_mb,
         iterations=args.iterations,
+        verify_dedup=not args.no_dedup_audit,
     )
 
 

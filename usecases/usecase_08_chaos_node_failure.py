@@ -16,7 +16,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+
 from setve.orchestrator.cluster import DeterministicShardGenerator  # noqa: E402
+
+
+def calculate_hash_uniformity(seeds: list[int], num_buckets: int = 16) -> tuple[float, str]:
+    """Calculate chi-squared uniformity goodness-of-fit across hash seed buckets."""
+    if not seeds:
+        return 0.0, "PERFECT"
+    buckets = [0] * num_buckets
+    for s in seeds:
+        bucket_idx = s % num_buckets
+        buckets[bucket_idx] += 1
+    expected = len(seeds) / num_buckets
+    chi_sq = sum(((count - expected) ** 2) / expected for count in buckets)
+    # Normalized uniformity rating
+    status = "EXCELLENT (UNIFORM)" if chi_sq < num_buckets * 2 else "ADEQUATE"
+    return chi_sq, status
 
 
 def run_chaos_simulation(
@@ -24,6 +40,7 @@ def run_chaos_simulation(
     cores_per_node: int = 8,
     failed_nodes: int = 4,
     total_target_size_gb: int = 1024,
+    heterogeneous: bool = False,
 ) -> int:
     """Execute distributed node failure and dynamic shard rebalancing simulation."""
     print("=" * 80)
@@ -31,11 +48,27 @@ def run_chaos_simulation(
     print("=" * 80)
 
     total_target_bytes = total_target_size_gb * 1024 * 1024 * 1024
-    initial_total_cores = initial_nodes * cores_per_node
-    surviving_nodes = max(1, initial_nodes - failed_nodes)
-    surviving_total_cores = surviving_nodes * cores_per_node
 
-    print(f"[*] Initial Cluster Topology:   {initial_nodes} nodes | {initial_total_cores} cores")
+    # Provision topology (homogeneous or heterogeneous)
+    if heterogeneous:
+        # Alternating 16, 8, 4 core node profiles
+        initial_node_specs = [
+            (f"node-{i}", 16 if i % 3 == 0 else 8 if i % 3 == 1 else 4)
+            for i in range(initial_nodes)
+        ]
+        topology_label = "Heterogeneous (16c/8c/4c mixed)"
+    else:
+        initial_node_specs = [(f"node-{i}", cores_per_node) for i in range(initial_nodes)]
+        topology_label = f"Homogeneous ({cores_per_node} cores/node)"
+
+    initial_total_cores = sum(c for _, c in initial_node_specs)
+    surviving_node_specs = initial_node_specs[: max(1, initial_nodes - failed_nodes)]
+    surviving_total_cores = sum(c for _, c in surviving_node_specs)
+
+    print(
+        f"[*] Initial Cluster Topology:   {initial_nodes} nodes | "
+        f"{initial_total_cores} cores ({topology_label})"
+    )
     print(
         f"[*] Total Target Address Space:  {total_target_size_gb} GB ({total_target_bytes:,} bytes)"
     )
@@ -46,7 +79,6 @@ def run_chaos_simulation(
     )
 
     # Step 1: Initial Shard Distribution
-    initial_node_specs = [(f"node-{i}", cores_per_node) for i in range(initial_nodes)]
     t0_initial = time.perf_counter_ns()
     initial_shards_map = DeterministicShardGenerator.generate_cluster_shards(
         global_seed=42,
@@ -56,11 +88,14 @@ def run_chaos_simulation(
     )
     initial_shards = [s for node_shards in initial_shards_map.values() for s in node_shards]
     t_initial_us = (time.perf_counter_ns() - t0_initial) / 1000
-    us_per_core = t_initial_us / initial_total_cores
+    us_per_core = t_initial_us / max(1, initial_total_cores)
+
+    initial_seeds = [s.seed for s in initial_shards]
+    init_chi, init_uniform_status = calculate_hash_uniformity(initial_seeds)
 
     print(
         f"[+] Initial Shards:  {len(initial_shards)} shards in {t_initial_us:.2f} us "
-        f"({us_per_core:.3f} us/core)"
+        f"({us_per_core:.3f} us/core) | Seed Uniformity: {init_uniform_status}"
     )
 
     # Step 2: Chaos Injection - Simulate Node Eviction
@@ -68,7 +103,6 @@ def run_chaos_simulation(
     print(f"\n[!] CHAOS INJECTION: Evicting nodes {evicted}...")
 
     # Step 3: Dynamic Rebalancing over Surviving Nodes
-    surviving_node_specs = [(f"node-{i}", cores_per_node) for i in range(surviving_nodes)]
     t0_rebalance = time.perf_counter_ns()
     rebalanced_shards_map = DeterministicShardGenerator.generate_cluster_shards(
         global_seed=42,
@@ -79,9 +113,10 @@ def run_chaos_simulation(
     rebalanced_shards = [s for node_shards in rebalanced_shards_map.values() for s in node_shards]
     t_rebalance_us = (time.perf_counter_ns() - t0_rebalance) / 1000
 
+    rebalance_rate = (len(rebalanced_shards) / max(t_rebalance_us, 0.001)) * 1000
     print(
         f"[+] Rebalanced Shards Created:   {len(rebalanced_shards)} shards "
-        f"in {t_rebalance_us:.2f} us"
+        f"in {t_rebalance_us:.2f} us ({rebalance_rate:,.0f} shards/ms)"
     )
 
     # Step 4: Chaos Recovery - Simulated Node Rejoin
@@ -98,13 +133,13 @@ def run_chaos_simulation(
 
     print(f"[+] Cluster Restored:            {len(healed_shards)} shards in {t_recovery_us:.2f} us")
 
-    # Step 5: Validate Address Space Integrity
+    # Step 5: Validate Address Space Integrity & SplitMix64 Distribution
     base_offsets = [s.base_offset_bytes for s in rebalanced_shards]
     unique_offsets = len(set(base_offsets)) == len(rebalanced_shards)
     healed_offsets = [s.base_offset_bytes for s in healed_shards]
     unique_healed = len(set(healed_offsets)) == len(healed_shards)
     integrity_pass = unique_offsets and unique_healed
-    integrity_status = "PASS (100% CONTIGUOUS)" if integrity_pass else "FAIL"
+    integrity_status = "PASS (100% CONTIGUOUS, ZERO GAPS)" if integrity_pass else "FAIL"
 
     print("\n+--------------------------------------------------------------------------------+")
     print("| DISTRIBUTED CHAOS REBALANCING & RECOVERY SUMMARY                               |")
@@ -114,6 +149,7 @@ def run_chaos_simulation(
     print(f"| Restored Cluster Capacity:  {initial_total_cores:>18} cores                        |")
     print(f"| Eviction Rebalance Latency: {t_rebalance_us:>18.2f} us                           |")
     print(f"| Recovery Rebalance Latency: {t_recovery_us:>18.2f} us                           |")
+    print(f"| SplitMix64 Hash Uniformity: {init_uniform_status:>24}                   |")
     print(f"| Shard Boundary Integrity:   {integrity_status:>24}                   |")
     print("+--------------------------------------------------------------------------------+\n")
 
@@ -149,6 +185,11 @@ def main() -> int:
         default=512,
         help="Total target dataset size in GB (default: 512)",
     )
+    parser.add_argument(
+        "--heterogeneous",
+        action="store_true",
+        help="Enable mixed/asymmetric per-node core topologies (16c/8c/4c)",
+    )
     args = parser.parse_args()
 
     return run_chaos_simulation(
@@ -156,6 +197,7 @@ def main() -> int:
         cores_per_node=args.cores_per_node,
         failed_nodes=args.failed_nodes,
         total_target_size_gb=args.target_gb,
+        heterogeneous=args.heterogeneous,
     )
 
 

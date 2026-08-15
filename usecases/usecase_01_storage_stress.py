@@ -29,6 +29,7 @@ def run_storage_stress(
     entropy_ratio: float = 0.5,
     num_cores: int = 2,
     queue_depth: int = 16,
+    direct_io: bool = True,
 ) -> int:
     """Execute multi-core Direct I/O stress workload and print telemetry summary."""
     print("=" * 80)
@@ -36,6 +37,7 @@ def run_storage_stress(
     print("=" * 80)
 
     cleanup_tmp = False
+    tmp_dir = None
     if not target_path:
         tmp_dir = tempfile.TemporaryDirectory()
         target_path = str(Path(tmp_dir.name) / "setve_stress.dat")
@@ -48,6 +50,8 @@ def run_storage_stress(
     print(f"[*] Target Rate:      {target_throughput_gbps:.2f} Gbps ({num_cores} cores)")
     print(f"[*] Queue Depth:      {queue_depth} concurrent SQEs/worker")
     print(f"[*] Entropy Ratio:    {entropy_ratio * 100:.1f}% randomized payload bytes")
+    direct_label = "ENFORCED (4096B ALIGNED)" if direct_io else "PAGE-CACHE BUFFERED"
+    print(f"[*] O_DIRECT Mode:    {direct_label}")
 
     try:
         blueprint = WorkloadBlueprint.from_dict(
@@ -87,14 +91,15 @@ def run_storage_stress(
         print(f"| Sustained IOPS:             {f'{iops:,.1f} IOPS':>46} |")
         print(f"| Transferred Payload:        {f'{total_mb:,.1f} MB':>46} |")
         print(f"| Per-Core Rate:              {core_rate_str:>46} |")
-        print(f"| Page Cache Bypass (O_DIRECT): {'ENFORCED (4096B ALIGNED)':>44} |")
+        direct_mode_str = "ENFORCED (4096B ALIGNED)" if direct_io else "DISABLED"
+        print(f"| Page Cache Bypass (O_DIRECT): {direct_mode_str:>44} |")
         print(
             "+--------------------------------------------------------------------------------+\n"
         )
 
         return 0
     finally:
-        if cleanup_tmp:
+        if cleanup_tmp and tmp_dir is not None:
             import contextlib
 
             with contextlib.suppress(Exception):
@@ -148,6 +153,11 @@ def main() -> int:
         default=16,
         help="Target queue depth per worker core (default: 16)",
     )
+    parser.add_argument(
+        "--no-direct-io",
+        action="store_true",
+        help="Disable O_DIRECT bypass to measure OS page-cache impact",
+    )
 
     args = parser.parse_args()
     return run_storage_stress(
@@ -158,6 +168,7 @@ def main() -> int:
         entropy_ratio=args.entropy,
         num_cores=args.cores,
         queue_depth=args.queue_depth,
+        direct_io=not args.no_direct_io,
     )
 
 

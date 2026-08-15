@@ -27,6 +27,9 @@ async def run_ai_vector_s3_simulation(
     vector_ops: int = 1000,
     vector_queries: int = 200,
     s3_chunks: int = 20,
+    dimension: int = 1536,
+    top_k: int = 10,
+    query_concurrency: int = 8,
 ) -> int:
     """Execute asynchronous Vector DB and S3 ingestion simulations."""
     print("=" * 80)
@@ -37,22 +40,22 @@ async def run_ai_vector_s3_simulation(
     vector_uri = "vector://prod_embeddings_collection"
     print(f"\n[*] Initializing Vector Adapter for: {vector_uri}")
     vector_adapter = AdapterFactory.create(vector_uri)
-    await vector_adapter.initialize({"dimension": 1536, "metric": "cosine"})
+    await vector_adapter.initialize({"dimension": dimension, "metric": "cosine", "top_k": top_k})
 
     upsert_collector = MetricCollector()
     query_collector = MetricCollector()
-    pool = BufferPool(buffer_count=4, buffer_size=4096)
+    pool = BufferPool(buffer_count=max(8, query_concurrency * 2), buffer_size=4096)
 
     try:
         vector_target = TargetDescriptor(
             endpoint_uri=vector_uri, resource_path="prod_embeddings_collection"
         )
 
-        print(f"[*] Executing {vector_ops:,} high-density vector upserts (4KB batches)...")
+        print(f"[*] Executing {vector_ops:,} vector upserts (dim={dimension}, 4KB batches)...")
         t0_upsert = time.perf_counter_ns()
         total_vector_bytes = 0
         for i in range(vector_ops):
-            buf = pool.acquire(i)
+            buf = pool.acquire(i % pool.buffer_count)
             op_t0 = time.perf_counter_ns()
             written = await vector_adapter.write(vector_target, offset=i * 4096, payload=buf)
             total_vector_bytes += written
@@ -65,16 +68,32 @@ async def run_ai_vector_s3_simulation(
         upsert_iops = vector_ops / upsert_duration
         upsert_mb = total_vector_bytes / (1024 * 1024)
 
-        # Simulated Vector Similarity Queries (Top-K ANN Search)
-        print(f"[*] Executing {vector_queries:,} nearest-neighbor similarity searches (k=10)...")
+        # Simulated Vector Similarity Queries (Top-K ANN Search with async concurrency)
+        print(
+            f"[*] Executing {vector_queries:,} nearest-neighbor searches "
+            f"(k={top_k}, concurrency={query_concurrency})..."
+        )
         t0_query = time.perf_counter_ns()
-        for i in range(vector_queries):
-            buf = pool.acquire(i)
-            op_t0 = time.perf_counter_ns()
-            read_bytes = await vector_adapter.read(vector_target, offset=i * 4096, buffer=buf)
-            lat = time.perf_counter_ns() - op_t0
-            query_collector.record_latency(lat)
-            query_collector.record_bytes(read_bytes)
+
+        async def _query_worker(start_idx: int, count: int) -> None:
+            for idx in range(start_idx, start_idx + count):
+                buf = pool.acquire(idx % pool.buffer_count)
+                op_t0 = time.perf_counter_ns()
+                read_bytes = await vector_adapter.read(vector_target, offset=idx * 4096, buffer=buf)
+                lat = time.perf_counter_ns() - op_t0
+                query_collector.record_latency(lat)
+                query_collector.record_bytes(read_bytes)
+
+        # Distribute query workload across concurrent coroutines
+        batch_size = max(1, vector_queries // query_concurrency)
+        tasks = []
+        for c in range(query_concurrency):
+            c_start = c * batch_size
+            c_count = batch_size if c < query_concurrency - 1 else vector_queries - c_start
+            if c_count > 0:
+                tasks.append(_query_worker(c_start, c_count))
+
+        await asyncio.gather(*tasks)
         query_duration = max((time.perf_counter_ns() - t0_query) / 1e9, 1e-9)
         query_qps = vector_queries / query_duration
 
@@ -127,7 +146,8 @@ async def run_ai_vector_s3_simulation(
     print(f"| Vector Upsert Volume:       {upsert_mb:>16.2f} MB                             |")
     print(f"| Vector Upsert Latency (p50):{u_p50:>16.3f} ms                             |")
     print(f"| Vector Upsert Latency (p99):{u_p99:>16.3f} ms                             |")
-    print(f"| Vector Query Rate (QPS):    {query_qps:>16,.1f} QPS                             |")
+    qps_str = f"{query_qps:,.1f} QPS (c={query_concurrency})"
+    print(f"| Vector Query Rate (QPS):    {qps_str:>16}                             |")
     print(f"| Vector Query Latency (p50): {q_p50:>16.3f} ms                             |")
     print(f"| Vector Query Latency (p99): {q_p99:>16.3f} ms                             |")
     print(f"| S3 Ingestion Rate:          {s3_gbps:>16.2f} Gbps                           |")
@@ -160,6 +180,24 @@ def main() -> int:
         default=20,
         help="Number of 1MB S3 multipart chunks (default: 20)",
     )
+    parser.add_argument(
+        "--dimension",
+        type=int,
+        default=1536,
+        help="Vector embedding dimension (default: 1536)",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="Top-K nearest neighbors to retrieve (default: 10)",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=8,
+        help="Async query client concurrency level (default: 8)",
+    )
 
     args = parser.parse_args()
     return asyncio.run(
@@ -167,6 +205,9 @@ def main() -> int:
             vector_ops=args.vector_ops,
             vector_queries=args.vector_queries,
             s3_chunks=args.s3_chunks,
+            dimension=args.dimension,
+            top_k=args.top_k,
+            query_concurrency=args.concurrency,
         )
     )
 
