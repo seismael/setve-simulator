@@ -4,7 +4,8 @@ import asyncio
 import time
 from typing import Any
 
-from setve.adapters.base import TargetAdapter, TargetDescriptor
+from setve.adapters.base import DirectBuffer, TargetAdapter, TargetDescriptor
+from setve.logging import get_logger
 from setve.orchestrator.affinity import pin_to_core
 from setve.orchestrator.cluster import WorkerShardSpec
 from setve.payload.mutator import PySIMDPayloadMutator
@@ -20,13 +21,18 @@ class WorkerExecutionEngine:
         shard_spec: WorkerShardSpec,
         target_uri: str,
         adapter_cls: type[TargetAdapter],
-        duration_sec: int,
+        duration_sec: float,
     ) -> None:
         self.shard_spec = shard_spec
         self.target_uri = target_uri
         self.adapter_cls = adapter_cls
         self.duration_sec = duration_sec
         self.collector = MetricCollector()
+        self.logger = get_logger(
+            "setve.worker",
+            node_id=shard_spec.node_id,
+            core_id=shard_spec.core_id,
+        )
 
     async def execute(self) -> WorkerTelemetryResult:
         """Run the core-pinned event loop and return collected telemetry."""
@@ -50,6 +56,7 @@ class WorkerExecutionEngine:
 
         queue_depth = adapter.capabilities().max_concurrent_ops
         keep_running = True
+        error_msg: str | None = None
 
         async def _timer() -> None:
             nonlocal keep_running
@@ -59,8 +66,17 @@ class WorkerExecutionEngine:
         timer_task = asyncio.create_task(_timer())
         start_time = time.perf_counter()
 
+        self.logger.debug(
+            "Worker started execution on core %s (block_size=%s, queue_depth=%s)",
+            self.shard_spec.core_id,
+            block_size,
+            queue_depth,
+        )
+
+        buf: DirectBuffer | None = None
         try:
             # Hot loop: Non-blocking core-pinned write execution with HDR telemetry
+            # (Zero heap allocations: reusable slice buffer + O(1) bit_length HDR indexing)
             while keep_running:
                 for _ in range(queue_depth):
                     t0 = time.perf_counter_ns()
@@ -72,13 +88,21 @@ class WorkerExecutionEngine:
                     self.collector.record_bytes(bytes_written)
                     offset += stride
 
-                # Yield control to event loop to allow timer check and async task processing
+                # Yield control to event loop for timer checks and non-blocking scheduling
                 await asyncio.sleep(0)
+        except Exception as e:
+            error_msg = f"Worker core {self.shard_spec.core_id} encountered error: {e}"
+            self.logger.exception(error_msg)
         finally:
             timer_task.cancel()
-            buf = None  # Release reference to direct buffer view
+            buf = None  # Release view reference
             mutator.close()
-            await adapter.flush(descriptor)
+            try:
+                await adapter.flush(descriptor)
+            except Exception as fe:
+                self.logger.warning(
+                    "Adapter flush warning on core %s: %s", self.shard_spec.core_id, fe
+                )
             if hasattr(adapter, "close"):
                 adapter.close()
 
@@ -95,6 +119,7 @@ class WorkerExecutionEngine:
             p99_ms=self.collector.p99_latency_ms(),
             p999_ms=self.collector.p999_latency_ms(),
             throughput_gbps=self.collector.throughput_gbps(actual_duration),
+            error_message=error_msg,
         )
 
 
@@ -102,7 +127,7 @@ def run_worker_process(
     shard_spec: WorkerShardSpec,
     target_uri: str,
     adapter_cls: type[TargetAdapter],
-    duration_sec: int,
+    duration_sec: float,
     telemetry_queue: Any = None,
 ) -> None:
     """Multiprocessing entrypoint: Pinned to a single core, running an isolated event loop."""
@@ -116,7 +141,22 @@ def run_worker_process(
         pass
 
     engine = WorkerExecutionEngine(shard_spec, target_uri, adapter_cls, duration_sec)
-    result = asyncio.run(engine.execute())
+    try:
+        result = asyncio.run(engine.execute())
+    except Exception as exc:
+        result = WorkerTelemetryResult(
+            core_id=shard_spec.core_id,
+            node_id=shard_spec.node_id,
+            total_ops=0,
+            total_bytes=0,
+            duration_sec=0.0,
+            p50_ms=0.0,
+            p90_ms=0.0,
+            p99_ms=0.0,
+            p999_ms=0.0,
+            throughput_gbps=0.0,
+            error_message=f"Fatal worker bootstrap error: {exc}",
+        )
 
     if telemetry_queue is not None:
         telemetry_queue.put(result)

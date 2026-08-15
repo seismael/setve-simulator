@@ -4,21 +4,41 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
+from setve.exceptions import (
+    AdapterError,
+    AdapterInitializationError,
+    AdapterNotImplementedError,
+    AlignmentError,
+    ConnectionTimeoutError,
+    DeviceNotFoundError,
+    HardwareIoError,
+    MisalignedBufferError,
+    MisalignedLengthError,
+    MisalignedOffsetError,
+    QueueFullError,
+    SetveError,
+    StorageExhaustedError,
+)
 
-class AdapterError(Exception):
-    """Base exception for all storage and transport adapter failures."""
-
-
-class AlignmentError(AdapterError, ValueError):
-    """Raised when memory address, offset, or transfer size violates alignment constraints."""
-
-
-class QueueFullError(AdapterError):
-    """Raised when an adapter's submission queue is saturated."""
-
-
-class HardwareIoError(AdapterError):
-    """Raised when an underlying I/O device or interface returns an I/O fault."""
+__all__ = [
+    "AdapterCapabilities",
+    "AdapterError",
+    "AdapterInitializationError",
+    "AdapterNotImplementedError",
+    "AlignmentError",
+    "ConnectionTimeoutError",
+    "DeviceNotFoundError",
+    "DirectBuffer",
+    "HardwareIoError",
+    "MisalignedBufferError",
+    "MisalignedLengthError",
+    "MisalignedOffsetError",
+    "QueueFullError",
+    "SetveError",
+    "StorageExhaustedError",
+    "TargetAdapter",
+    "TargetDescriptor",
+]
 
 
 @dataclass(slots=True)
@@ -32,7 +52,7 @@ class DirectBuffer:
     def assert_alignment(self, alignment: int = 4096) -> None:
         """Assert that buffer address is aligned to specified byte boundary."""
         if self.address % alignment != 0:
-            raise AlignmentError(
+            raise MisalignedBufferError(
                 f"DirectBuffer at address {hex(self.address)} violates {alignment}-byte alignment"
             )
 

@@ -37,11 +37,13 @@ try:
             io_uring_wait_cqe,
         )
     else:
-        Ring = None  # type: ignore[assignment, misc]
-        Cqe = None  # type: ignore[assignment, misc]
+        Ring = None
+        Cqe = None
+        io_uring_queue_init: Any = None
 except ImportError:
-    Ring = None  # type: ignore[assignment, misc]
-    Cqe = None  # type: ignore[assignment, misc]
+    Ring = None
+    Cqe = None
+    io_uring_queue_init = None
 
 
 class IoUringTargetAdapter(TargetAdapter):
@@ -65,7 +67,7 @@ class IoUringTargetAdapter(TargetAdapter):
         if self._initialized:
             return
 
-        if sys.platform != "linux" or Ring is None:
+        if sys.platform != "linux" or Ring is None or io_uring_queue_init is None:
             # Emulated / Mock mode on non-Linux platforms
             self._initialized = True
             return

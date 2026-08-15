@@ -1,11 +1,10 @@
-"""Multi-Process Control Plane Master Controller."""
-
-import logging
 import multiprocessing as mp
 import socket
 import time
 
 from setve.adapters.factory import AdapterFactory
+from setve.exceptions import WorkerCrashError
+from setve.logging import get_logger
 from setve.orchestrator.affinity import available_cores
 from setve.orchestrator.cluster import DeterministicShardGenerator
 from setve.orchestrator.worker import run_worker_process
@@ -13,8 +12,6 @@ from setve.payload.blueprint import WorkloadBlueprint
 from setve.validation.ebpf_probe import EBPFProbe
 from setve.validation.evaluator import TelemetryEvaluator
 from setve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
-
-logger = logging.getLogger("setve.master")
 
 
 class MultiCoreOrchestrator:
@@ -24,12 +21,16 @@ class MultiCoreOrchestrator:
         self.core_ids = core_ids or available_cores()
         self.processes: list[mp.Process] = []
         self.node_id = socket.gethostname()
+        self.logger = get_logger("setve.master", node_id=self.node_id)
 
     def start(self, blueprint: WorkloadBlueprint) -> ClusterTelemetrySummary:
         """Spawn core-pinned worker process fleet using computed shards and blueprint."""
-        logger.info(
-            f"Starting simulation run '{blueprint.run_id}' on node '{self.node_id}' "
-            f"across cores {self.core_ids} (Target: {blueprint.target_uri})"
+        self.logger.info(
+            "Starting simulation run '%s' on node '%s' across cores %s (Target: %s)",
+            blueprint.run_id,
+            self.node_id,
+            self.core_ids,
+            blueprint.target_uri,
         )
 
         # Calculate shards for this node
@@ -57,27 +58,36 @@ class MultiCoreOrchestrator:
         probe_start_bytes = probe.sample_bytes_transferred()
         start_time = time.perf_counter()
 
-        for i in range(len(self.core_ids)):
-            if i >= len(local_shards):
-                break
+        try:
+            for i in range(len(self.core_ids)):
+                if i >= len(local_shards):
+                    break
 
-            shard_spec = local_shards[i]
-            p = mp.Process(
-                target=run_worker_process,
-                args=(
-                    shard_spec,
-                    blueprint.target_uri,
-                    adapter_cls,
-                    blueprint.duration_seconds,
-                    telemetry_queue,
-                ),
-                daemon=True,
-            )
-            p.start()
-            self.processes.append(p)
+                shard_spec = local_shards[i]
+                p = mp.Process(
+                    target=run_worker_process,
+                    args=(
+                        shard_spec,
+                        blueprint.target_uri,
+                        adapter_cls,
+                        blueprint.duration_seconds,
+                        telemetry_queue,
+                    ),
+                    daemon=True,
+                )
+                p.start()
+                self.processes.append(p)
 
-        for p in self.processes:
-            p.join()
+            for p in self.processes:
+                p.join()
+                if p.exitcode not in (0, None):
+                    self.logger.error("Worker PID %s crashed with exit code %s", p.pid, p.exitcode)
+        except Exception as e:
+            self.logger.exception("Error during worker fleet execution: %s", e)
+            for p in self.processes:
+                if p.is_alive():
+                    p.terminate()
+            raise
 
         elapsed_sec = max(time.perf_counter() - start_time, 1e-6)
 
@@ -88,6 +98,14 @@ class MultiCoreOrchestrator:
                 worker_results.append(telemetry_queue.get_nowait())
             except Exception:
                 break
+
+        # Check for individual worker execution failures
+        failed_workers = [w for w in worker_results if w.error_message is not None]
+        if failed_workers:
+            err_details = "; ".join(f"Core {w.core_id}: {w.error_message}" for w in failed_workers)
+            self.logger.error("Worker fleet execution failure: %s", err_details)
+            err_msg = f"Worker failure detected during run '{blueprint.run_id}': {err_details}"
+            raise WorkerCrashError(err_msg)
 
         # Compute cluster aggregate metrics
         total_ops = sum(w.total_ops for w in worker_results)
@@ -116,20 +134,23 @@ class MultiCoreOrchestrator:
             divergence=divergence,
         )
 
-        logger.info(
-            f"Simulation completed: {total_ops} ops ({total_bytes / (1024**3):.2f} GB) "
-            f"at {agg_gbps:.2f} Gbps in {elapsed_sec:.2f}s"
+        self.logger.info(
+            "Simulation completed: %s ops (%.2f GB) at %.2f Gbps in %.2fs",
+            total_ops,
+            total_bytes / (1024**3),
+            agg_gbps,
+            elapsed_sec,
         )
         return summary
 
 
 def main() -> None:
     """CLI entrypoint for SETVE simulation orchestrator."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
-    logger.info("SETVE Orchestrator CLI v0.2.0 starting")
+    from setve.logging import configure_logging
+
+    configure_logging()
+    cli_logger = get_logger("setve.cli")
+    cli_logger.info("SETVE Orchestrator CLI v0.2.0 starting")
 
     blueprint = WorkloadBlueprint.from_dict(
         {

@@ -24,6 +24,7 @@ class WorkerTelemetryResult:
     p99_ms: float
     p999_ms: float
     throughput_gbps: float
+    error_message: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

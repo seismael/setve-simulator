@@ -47,4 +47,4 @@ class AdapterFactory:
     def create(cls, target_uri: str, **kwargs: object) -> TargetAdapter:
         """Instantiate and return target adapter for URI scheme."""
         adapter_cls = cls.get_adapter_class(target_uri)
-        return adapter_cls(**kwargs)  # type: ignore[arg-type]
+        return adapter_cls(**kwargs)

@@ -11,6 +11,7 @@ import http.server
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 # Ensure setve package is on sys.path
@@ -55,6 +56,7 @@ def run_prometheus_monitoring(
     output_prom: str | None = None,
     output_json: str | None = None,
     serve_port: int | None = None,
+    serve_duration: float = 3.0,
 ) -> int:
     """Run workload and export Prometheus and JSON metrics."""
     print("=" * 80)
@@ -101,13 +103,16 @@ def run_prometheus_monitoring(
         if serve_port is not None:
             TelemetryHTTPRequestHandler.prom_data = prom_text
             TelemetryHTTPRequestHandler.json_data = json_text
-            server = http.server.HTTPServer(("127.0.0.1", serve_port), TelemetryHTTPRequestHandler)
+            server = http.server.HTTPServer(("0.0.0.0", serve_port), TelemetryHTTPRequestHandler)
             server_thread = threading.Thread(target=server.serve_forever, daemon=True)
             server_thread.start()
-            print(f"\n[+] Live Telemetry Server Active at http://127.0.0.1:{serve_port}")
-            print(f"    -> Prometheus Scrape:  http://127.0.0.1:{serve_port}/metrics")
-            print(f"    -> JSON Telemetry:     http://127.0.0.1:{serve_port}/telemetry")
-            print("    -> Press Ctrl+C or let test finalize.\n")
+            print(f"\n[+] Live Telemetry Server Active at http://0.0.0.0:{serve_port}")
+            print(f"    -> Prometheus Scrape:  http://localhost:{serve_port}/metrics")
+            print(f"    -> JSON Telemetry:     http://localhost:{serve_port}/telemetry")
+
+            # Keep server active for requested serve duration or allow background scraping
+            if serve_duration > 0:
+                time.sleep(serve_duration)
             server.shutdown()
             server.server_close()
 
@@ -146,6 +151,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--serve-port",
+        "--port",
+        dest="serve_port",
         type=int,
         default=None,
         help="Optional HTTP port to serve live /metrics and /telemetry endpoints (e.g. 9100)",

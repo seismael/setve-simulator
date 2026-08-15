@@ -118,6 +118,12 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
   - **Efficiency:** Never bulk-read directories or sequential markdown files. By isolating reads to exact `code_references:` and `graph.json` traversal, the agent dramatically drops input tokens, driving down API costs and preventing context saturation.
   - **Quality Implementation:** Semantic guessing is banned. Agents must extract exact constraints (e.g., $4096\text{-byte}$ alignment) directly from the target LLD before writing code, ensuring the implementation output is deterministic, professional, and mathematically validated by the test suite.
 
+### 12. Unified Exception Hierarchy & Zero-Allocation Structured Logging
+* **Constraint:** System faults must never raise raw, generic Python exceptions (`Exception`, `ValueError`, `OSError`) without explicit domain context. Logging must never block or allocate dynamically on I/O hot paths.
+* **Enforcement:**
+  - Map all OS `errno` codes to granular `SetveError` subclasses (`MisalignedOffsetError`, `HardwareIoError`, `StorageExhaustedError`, `ConnectionTimeoutError`).
+  - Hot paths must use asynchronous or queue-based structured loggers with log-level gating, ensuring zero string interpolation overhead during active I/O loops.
+
 ---
 
 ## Coding Standards & Quality Gates

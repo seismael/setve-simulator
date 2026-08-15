@@ -1,14 +1,16 @@
 """POSIX Direct I/O (O_DIRECT) Storage Target Adapter."""
 
+from __future__ import annotations
+
+import io
 import os
 from pathlib import Path
 from typing import Any
 
 from setve.adapters.base import (
     AdapterCapabilities,
-    AdapterError,
     DirectBuffer,
-    HardwareIoError,
+    SetveError,
     TargetAdapter,
     TargetDescriptor,
 )
@@ -25,6 +27,7 @@ class PosixDirectIOAdapter(TargetAdapter):
             native_block_size=4096,
         )
         self._fds: dict[str, int] = {}
+        self._file_ios: dict[str, io.FileIO] = {}
 
     async def initialize(self, config: dict[str, Any]) -> None:
         """Initialize POSIX adapter resources."""
@@ -50,9 +53,10 @@ class PosixDirectIOAdapter(TargetAdapter):
         try:
             fd = os.open(path, flags, 0o666)
         except OSError as e:
-            raise AdapterError(f"Failed to open target {path}: {e}") from e
+            raise SetveError.from_errno(e, f"Failed to open target {path}") from e
 
         self._fds[path] = fd
+        self._file_ios[path] = io.FileIO(fd, mode="r+", closefd=False)
         return fd
 
     async def write(self, target: TargetDescriptor, offset: int, payload: DirectBuffer) -> int:
@@ -65,26 +69,30 @@ class PosixDirectIOAdapter(TargetAdapter):
             written = os.write(fd, payload.view)
             return written
         except OSError as e:
-            raise HardwareIoError(f"POSIX Direct I/O write failed at offset {offset}: {e}") from e
+            err_ctx = f"POSIX Direct I/O write failed at offset {offset}"
+            raise SetveError.from_errno(e, err_ctx) from e
 
     async def read(self, target: TargetDescriptor, offset: int, buffer: DirectBuffer) -> int:
-        """Execute Direct I/O read enforcing 4096-byte alignment into DirectBuffer.view."""
+        """Execute Direct I/O read enforcing 4096-byte alignment directly into DirectBuffer.view."""
         buffer.assert_alignment(4096)
         fd = self._get_or_open_fd(target)
+        path = target.resource_path
 
         try:
-            os.lseek(fd, offset, os.SEEK_SET)
-            # Use os.readv where supported for zero-copy read directly into buffer
+            # 1. Zero-copy readv (Linux / BSD)
             if hasattr(os, "readv"):
-                bytes_read = os.readv(fd, [buffer.view])
-                return bytes_read
+                os.lseek(fd, offset, os.SEEK_SET)
+                readv_fn: Any = getattr(os, "readv")  # noqa: B009
+                return int(readv_fn(fd, [buffer.view]))
 
-            data = os.read(fd, buffer.size)
-            bytes_read = len(data)
-            buffer.view[:bytes_read] = data
-            return bytes_read
+            # 2. Zero-allocation readinto using cached FileIO handle
+            f = self._file_ios[path]
+            f.seek(offset, os.SEEK_SET)
+            bytes_read = f.readinto(buffer.view)
+            return bytes_read if bytes_read is not None else 0
         except OSError as e:
-            raise HardwareIoError(f"POSIX Direct I/O read failed at offset {offset}: {e}") from e
+            err_ctx = f"POSIX Direct I/O read failed at offset {offset}"
+            raise SetveError.from_errno(e, err_ctx) from e
 
     async def flush(self, target: TargetDescriptor) -> None:
         """Flush file sync state."""
@@ -93,11 +101,16 @@ class PosixDirectIOAdapter(TargetAdapter):
             try:
                 os.fsync(self._fds[path])
             except OSError as e:
-                raise HardwareIoError(f"POSIX flush failed for {path}: {e}") from e
+                raise SetveError.from_errno(e, f"POSIX flush failed for {path}") from e
 
     def close(self) -> None:
-        """Close all open file descriptors."""
+        """Close all open file descriptors and streams."""
         import contextlib
+
+        for f in list(self._file_ios.values()):
+            with contextlib.suppress(Exception):
+                f.close()
+        self._file_ios.clear()
 
         for _path, fd in list(self._fds.items()):
             with contextlib.suppress(OSError):
