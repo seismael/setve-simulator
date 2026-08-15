@@ -97,7 +97,7 @@ async def main() -> int:
     # 2. Run Local Multi-Node Cluster Emulation
     # -------------------------------------------------------------
     log_header("PHASE 2: LOCAL MULTI-NODE DISTRIBUTED CLUSTER SIMULATION")
-    cluster_script = str(repo_root / "deployments" / "local_cluster" / "cluster_runner.py")
+    cluster_script = str(repo_root / "deploy" / "emulator" / "cluster_runner.py")
     print("[*] Running 4-Node, 8-Core Cluster with live gRPC barrier sync...")
     cmd = [
         uv_bin,

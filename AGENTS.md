@@ -57,6 +57,11 @@ docs/                          # Dual-Indexed Documentation Engine (docs/DOCUMEN
 ├── 02-hld/                    # C1/C2 System Topology & High-Level Design (HLD)
 ├── 03-adr/                    # Architectural Decision Records — Guardrails (ADR)
 └── 04-lld/                    # C3/C4 Component Architecture & Memory Layout (LLD)
+
+deploy/                        # 3-Tier Enterprise Deployment & Infrastructure Ecosystem
+├── packaging/                 # Immutable build definitions (docker, helm, operator)
+├── environments/              # Target environment overlays (local, dev, staging, prod)
+└── emulator/                  # Local multi-node distributed cluster simulator & gRPC sync
 ```
 
 ---
@@ -123,6 +128,14 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 * **Enforcement:**
   - Map all OS `errno` codes to granular `SetveError` subclasses (`MisalignedOffsetError`, `HardwareIoError`, `StorageExhaustedError`, `ConnectionTimeoutError`).
   - Hot paths must use asynchronous or queue-based structured loggers with log-level gating, ensuring zero string interpolation overhead during active I/O loops.
+
+### 13. 3-Tier Enterprise Deployment Governance (`deploy/`)
+* **Constraint:** All deployment configurations, infrastructure manifests, container definitions, Helm charts, Kubernetes operators, multi-node cluster runners, and environment definitions must reside exclusively in the canonical 3-tier `deploy/` directory structure. Ad-hoc or duplicate deployment folders are strictly forbidden.
+* **Enforcement:**
+  - `deploy/packaging/`: Build definitions (`docker/` multi-stage Dockerfile, `helm/` production charts, `operator/` Kopf operator & CRDs).
+  - `deploy/environments/`: Target environment overlays (`local/` developer compose & Grafana stack, `dev/` terraform, `staging/`, `prod/`).
+  - `deploy/emulator/`: Local multi-node cluster simulator and gRPC barrier synchronization runner (`cluster_runner.py`).
+  - All test files, validation scripts, and documentation must reference paths under `deploy/packaging/`, `deploy/environments/`, or `deploy/emulator/`.
 
 ---
 

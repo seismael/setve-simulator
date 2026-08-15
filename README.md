@@ -243,13 +243,11 @@ The [`usecases/`](file:///c:/dev/projects/setve-simulator/usecases/README.md) ca
 
 ## Deployment & Infrastructure Topologies
 
+SETVE supports a comprehensive 3-tier enterprise deployment ecosystem documented in [`deploy/`](file:///c:/dev/projects/setve-simulator/deploy/README.md):
 
-SETVE supports four deployment topologies documented in [`deploy/`](file:///c:/dev/projects/setve-simulator/deploy/README.md):
-
-1. **Local Development ([`deploy/environments/local/`](file:///c:/dev/projects/setve-simulator/deploy/environments/local))**: Docker Compose stack with local Prometheus and Grafana telemetry sinks (`docker compose -f deploy/environments/local/docker-compose.local.yml up -d`).
-2. **Production Kubernetes ([`deploy/helm/`](file:///c:/dev/projects/setve-simulator/deploy/helm/README.md))**: Production Helm 3 chart (`helm install setve-cluster deploy/helm/setve-cluster`) with CPU core-pinning (`cpuset`), HostPath NVMe mounts, and `ServiceMonitor` resources.
-3. **Cloud-Native Operator ([`deploy/k8s/`](file:///c:/dev/projects/setve-simulator/deploy/k8s/README.md))**: Kopf-based Kubernetes CRD operator managing `SETVECluster` resources with dynamic KEDA autoscaling.
-4. **Multi-Tier Lifecycle ([`deploy/environments/`](file:///c:/dev/projects/setve-simulator/deploy/environments/README.md))**: Infrastructure automation spanning `local` ($\le 10\text{ Gbps}$), `dev` ($25\text{ Gbps}$), `staging` ($100\text{ Gbps}$), and `prod` ($\ge 1\text{ TB/s}$).
+1. **Packaging Specs ([`deploy/packaging/`](file:///c:/dev/projects/setve-simulator/deploy/packaging))**: Multi-stage Linux Docker build (`deploy/packaging/docker/Dockerfile`), production Helm 3 chart (`deploy/packaging/helm/setve-cluster`), and Kopf Kubernetes CRD Operator (`deploy/packaging/operator/controller.py`).
+2. **Environment Overlays ([`deploy/environments/`](file:///c:/dev/projects/setve-simulator/deploy/environments/README.md))**: Progressive target tiers across `local` (`docker compose -f deploy/environments/local/docker-compose.yml up -d`), `dev` (Terraform IaaS), `staging` ($100\text{ Gbps}$ bare-metal), and `prod` ($\ge 1\text{ TB/s}$ hyperscale).
+3. **Local Cluster Emulator ([`deploy/emulator/`](file:///c:/dev/projects/setve-simulator/deploy/emulator/README.md))**: Multi-node distributed load generator simulator running core-pinned worker fleets with live gRPC barrier synchronization on local host infrastructure.
 
 ---
 

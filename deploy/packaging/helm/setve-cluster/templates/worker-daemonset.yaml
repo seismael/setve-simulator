@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "setve-cluster.fullname" . }}-worker
+  labels:
+    {{- include "setve-cluster.labels" . | nindent 4 }}
+    role: worker
+spec:
+  selector:
+    matchLabels:
+      {{- include "setve-cluster.labels" . | nindent 6 }}
+      role: worker
+  template:
+    metadata:
+      labels:
+        {{- include "setve-cluster.labels" . | nindent 8 }}
+        role: worker
+    spec:
+      hostIPC: {{ .Values.worker.hostIPC | default true }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy | default "IfNotPresent" }}
+          securityContext:
+            {{- toYaml .Values.worker.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          env:
+            - name: SETVE_MASTER_HOST
+              value: {{ include "setve-cluster.fullname" . }}-master
+            - name: SETVE_MASTER_PORT
+              value: "50051"

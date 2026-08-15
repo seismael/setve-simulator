@@ -1,95 +1,81 @@
-# SETVE Deployment & Infrastructure Architecture
+# SETVE Enterprise Deployment & Infrastructure Architecture
 
-This directory houses the complete deployment ecosystem for the **Universal Simulation & Telemetry Validation Engine (SETVE)**, spanning local development environments to hyperscale, multi-node Kubernetes clusters.
+This directory houses the unified deployment and infrastructure ecosystem for the **Universal Simulation & Telemetry Validation Engine (SETVE)**.
 
 ---
 
-## Deployment Options Overview
+## 3-Tier Enterprise Structure Overview
 
 ```text
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│                                SETVE DEPLOYMENT TOPOLOGIES                            │
-├──────────────────────────┬──────────────────────────┬─────────────────────────────────┤
-│ Tier / Topology          │ Target Runtime           │ Key Manifests & Controllers     │
-├──────────────────────────┼──────────────────────────┼─────────────────────────────────┤
-│ 1. Local Development     │ Docker Compose           │ deploy/environments/local/      │
-│ 2. Production Kubernetes │ Helm 3 Chart             │ deploy/helm/setve-cluster/      │
-│ 3. Cloud-Native Operator │ Kopf Operator + KEDA     │ deploy/k8s/operator/            │
-│ 4. Multi-Cloud IaaS      │ Terraform + Cloud-Init   │ deploy/environments/dev/        │
-└──────────────────────────┴──────────────────────────┴─────────────────────────────────┘
+deploy/
+├── README.md                      # Master Deployment & Infrastructure Architecture Guide
+│
+├── packaging/                     # 1. BUILD & PACKAGING SPECS (The "How to Build")
+│   ├── docker/                    # Multi-stage Dockerfile & container entrypoint
+│   │   ├── Dockerfile
+│   │   ├── entrypoint.sh
+│   │   └── README.md
+│   ├── helm/                      # Production Kubernetes Helm 3 Chart
+│   │   ├── README.md
+│   │   └── setve-cluster/
+│   │       ├── Chart.yaml
+│   │       ├── values.yaml
+│   │       └── templates/
+│   └── operator/                  # Cloud-Native Kopf Kubernetes Operator & CRDs
+│       ├── README.md
+│       ├── controller.py
+│       └── crds/
+│           └── setvecluster-crd.yaml
+│
+├── environments/                  # 2. TARGET ENVIRONMENTS & OVERLAYS (The "Where to Run")
+│   ├── README.md                  # Environment tier progression guide
+│   ├── local/                     # Local Developer Stack (Docker Compose + MinIO + Prom + Grafana)
+│   │   ├── docker-compose.yml
+│   │   ├── prometheus.yml
+│   │   ├── README.md
+│   │   └── grafana/
+│   ├── dev/                       # CI/CD Ephemeral Infrastructure (Terraform + Cloud-Init)
+│   │   └── terraform/main.tf
+│   ├── staging/                   # Pre-Production 8-Node Bare-Metal (Values Overlay)
+│   │   └── values.staging.yaml
+│   └── prod/                      # Hyperscale Multi-Terabyte Saturation (Values Overlay)
+│       └── values.prod.yaml
+│
+└── emulator/                      # 3. LOCAL MULTI-NODE TESTING HARNESS (The "Cluster Simulator")
+    ├── __init__.py                # Exports LocalClusterEmulator
+    ├── cluster_runner.py          # Multi-process node fleet with live gRPC barrier sync
+    └── README.md                  # Multi-node local testing guide
 ```
 
 ---
 
-## 1. Local Development Topology (`deploy/environments/local/`)
+## 1. Packaging Specs (`deploy/packaging/`)
 
-Designed for single-node functional verification, telemetry debugging, and integration testing with an out-of-the-box Prometheus observability stack.
-
-```bash
-# Start local Prometheus telemetry stack
-docker compose -f deploy/environments/local/docker-compose.local.yml up -d
-
-# Scrape endpoint available at: http://localhost:9090
-```
-
-- **`docker-compose.local.yml`**: Spins up Prometheus, Grafana, and mock SUT targets.
-- **`prometheus.yml`**: Configured to scrape SETVE metrics from `host.docker.internal:8000/metrics`.
+Contains immutable build definitions and distribution artifacts:
+- **`packaging/docker/`**: Multi-stage Linux Docker build with `uv`, `libnuma-dev`, and core affinity capabilities (`CAP_SYS_NICE`, `CAP_SYS_ADMIN`).
+- **`packaging/helm/setve-cluster/`**: Enterprise Helm 3 package for dedicated bare-metal Kubernetes nodes.
+- **`packaging/operator/`**: Event-driven Kopf Kubernetes Operator managing declarative `SETVECluster` Custom Resources (`setve.io/v1alpha1`).
 
 ---
 
-## 2. Production Helm Chart (`deploy/helm/setve-cluster/`)
+## 2. Environment Overlays (`deploy/environments/`)
 
-Package-managed deployment for dedicated bare-metal Kubernetes nodes with CPU pinning, host-path storage mounts, and SR-IOV network interfaces.
+Target-specific configurations and scaling policies:
 
-```bash
-# Install SETVE Cluster chart
-helm install setve-cluster deploy/helm/setve-cluster \
-  --namespace setve-system \
-  --create-namespace \
-  --values deploy/helm/setve-cluster/values.yaml
-```
-
-### Key Values Configuration (`values.yaml`)
-- `cluster.nodeCount`: Number of distributed load generator worker pods.
-- `cluster.coresPerNode`: Physical cores dedicated per pod (pinned via `cpuset`).
-- `storage.directIoPath`: Host block device or NVMe mount (`/dev/nvme0n1` or `/mnt/nvme`).
-- `telemetry.prometheus.enabled`: Auto-generates Prometheus `ServiceMonitor` annotations.
-
----
-
-## 3. Cloud-Native Kubernetes Operator (`deploy/k8s/operator/`)
-
-A declarative, event-driven operator built with [Kopf](https://kopf.readthedocs.io/) that reconciles `SETVECluster` Custom Resources, dynamically calculating worker shard topologies and provisioning KEDA `ScaledObject` resources.
-
-```bash
-# Run operator controller in development mode
-python deploy/k8s/operator/controller.py
-```
-
-### Declarative CRD Example (`SETVECluster`)
-```yaml
-apiVersion: setve.io/v1alpha1
-kind: SETVECluster
-metadata:
-  name: nvme-saturation-cluster
-  namespace: setve-system
-spec:
-  nodeCount: 16
-  coresPerNode: 16
-  targetThroughputGbps: 200
-  targetUri: "posix:///mnt/nvme/target.dat"
-  blockSizeBytes: 1048576
-  entropyRatio: 0.85
-  durationSeconds: 60
-```
-
----
-
-## 4. Multi-Tier Environments (`deploy/environments/`)
-
-| Environment | Purpose | Target Throughput | Host Topology |
+| Environment | Purpose | Target Rate | Topology & Manifests |
 | :--- | :--- | :--- | :--- |
-| **`local`** | Local developer testing | $\le 10\text{ Gbps}$ | Single process, loopback targets |
-| **`dev`** | CI/CD ephemeral clusters | $25\text{ Gbps}$ | 2-4 virtualized nodes |
-| **`staging`** | Pre-production validation | $100\text{ Gbps}$ | 8 bare-metal NVMe nodes |
-| **`prod`** | Full-scale stress testing | $\ge 1\text{ TB/s}$ | 64+ core-pinned nodes, SR-IOV |
+| **`local`** | Local developer testing | $\le 10\text{ Gbps}$ | `deploy/environments/local/docker-compose.yml` |
+| **`dev`** | CI/CD ephemeral clusters | $25\text{ Gbps}$ | `deploy/environments/dev/terraform/main.tf` |
+| **`staging`** | Pre-production validation | $100\text{ Gbps}$ | `deploy/environments/staging/values.staging.yaml` |
+| **`prod`** | Hyperscale stress testing | $\ge 1\text{ TB/s}$ | `deploy/environments/prod/values.prod.yaml` |
+
+---
+
+## 3. Local Cluster Emulator (`deploy/emulator/`)
+
+Emulates a distributed multi-node storage load generation cluster entirely on local host infrastructure:
+- **`cluster_runner.py`**: Spawns multiple simulated cluster nodes with dedicated worker process pools, executes live gRPC barrier synchronization handshakes, and aggregates cluster-wide HDR telemetry.
+- **Run command**:
+  ```bash
+  python deploy/emulator/cluster_runner.py --nodes 4 --cores-per-node 2 --duration 3.0 --rate 10.0
+  ```

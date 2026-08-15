@@ -1,0 +1,30 @@
+# Staging Environment Configuration for SETVE Cluster
+# Target: 100 Gbps Pre-Production Validation
+
+global:
+  environment: staging
+
+master:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+
+worker:
+  nodeSelector:
+    setve.io/performance-tier: "staging-nvme-storage"
+  resources:
+    limits:
+      cpu: "8"
+      memory: "16Gi"
+    requests:
+      cpu: "8"
+      memory: "16Gi"
+
+keda:
+  minReplicas: 2
+  maxReplicas: 8

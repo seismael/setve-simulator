@@ -59,19 +59,5 @@ worker:
 
 keda:
   enabled: true
-  minReplicaCount: 4
-  maxReplicaCount: 128
-  cooldownPeriod: 30
-  pollingInterval: 5
-  triggers:
-    - type: metrics-api
-      metadata:
-        targetValue: "50"
-
-telemetry:
-  clickhouse:
-    endpoint: "clickhouse.setve-telemetry.svc.cluster.local:9000"
-    database: "setve_telemetry"
-  ebpf:
-    enabled: true
-    interface: "eth0"
+  minReplicas: 1
+  maxReplicas: 32

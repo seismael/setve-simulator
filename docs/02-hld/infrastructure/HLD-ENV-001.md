@@ -44,7 +44,7 @@ The environment topology provides developer agility on local workstations while 
 * **Goal:** Sub-second inner-loop feedback for writing business logic, unit tests, and driver interfaces without requiring a Linux kernel with `io_uring` or root access.
 * **Architecture:**
   * Uses a fallback mock driver (`PosixDirectIOAdapter`) or standard socket emulation when native `io_uring` kernel headers are absent.
-  * Local containerized dependencies (ClickHouse, NATS JetStream, Prometheus) managed via `docker-compose.local.yml`.
+  * Local containerized dependencies (SETVE, MinIO, Prometheus, Grafana) managed via `deploy/environments/local/docker-compose.yml`.
 * **Resource Bounds:** 2 to 4 CPU cores, mock storage directories, loopback network (`127.0.0.1`).
 
 ### 2.2 Dev Environment (Remote Developer Sandbox)

@@ -1,0 +1,37 @@
+# Production Hyperscale Environment Configuration for SETVE Cluster
+# Target: >= 1 TB/s Multi-Node Stress Testing
+
+global:
+  environment: production
+
+master:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "8"
+      memory: "16Gi"
+    requests:
+      cpu: "4"
+      memory: "8Gi"
+
+worker:
+  nodeSelector:
+    setve.io/performance-tier: "baremetal-nvme-sriov"
+  tolerations:
+    - key: "performance"
+      operator: "Equal"
+      value: "dedicated"
+      effect: "NoSchedule"
+  resources:
+    limits:
+      cpu: "32"
+      memory: "64Gi"
+      hugepages-2Mi: "16Gi"
+    requests:
+      cpu: "32"
+      memory: "64Gi"
+      hugepages-2Mi: "16Gi"
+
+keda:
+  minReplicas: 8
+  maxReplicas: 64

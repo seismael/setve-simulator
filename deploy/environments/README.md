@@ -18,8 +18,8 @@ This guide details the multi-tier environment progression supporting SETVE from 
 ## Local Environment Quickstart
 
 ```bash
-# Start Prometheus container and local telemetry sink
-docker compose -f deploy/environments/local/docker-compose.local.yml up -d
+# Start full local developer stack (SETVE, MinIO, Prometheus, Grafana)
+docker compose -f deploy/environments/local/docker-compose.yml up -d
 
 # Execute a simulation with telemetry output
 python usecases/usecase_03_prometheus_monitoring.py

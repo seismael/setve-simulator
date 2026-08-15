@@ -43,7 +43,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY setve/ /app/setve/
 COPY usecases/ /app/usecases/
-COPY deployments/docker/entrypoint.sh /app/entrypoint.sh
+COPY deploy/packaging/docker/entrypoint.sh /app/entrypoint.sh
 
 RUN chmod +x /app/entrypoint.sh
 
