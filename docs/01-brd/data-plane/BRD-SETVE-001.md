@@ -12,8 +12,18 @@ traceability:
   governed_by_adr: []
   parent_hld: null
   child_llds: []
-code_references: []
-test_references: []
+code_references:
+  - "setve/payload/buffer_pool.py"
+  - "setve/payload/mutator.py"
+  - "setve/adapters/posix.py"
+  - "setve/adapters/io_uring.py"
+  - "setve/validation/metric_collector.py"
+  - "setve/validation/evaluator.py"
+test_references:
+  - "tests/test_alignment.py"
+  - "tests/test_mutator.py"
+  - "tests/test_posix_io.py"
+  - "tests/test_telemetry_evaluator.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---

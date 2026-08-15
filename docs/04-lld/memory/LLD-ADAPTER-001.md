@@ -36,30 +36,38 @@ last_validated_date: "2026-08-05"
 ### 1.1 Class Inheritance & Dependencies
 
 
+### 1.1 Adapter Factory Strategy Architecture
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                             TARGET ADAPTER FACTORY STRATEGY                              │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│                     ┌──────────────────────────────────────────────┐                     │
+│                     │       TargetAdapterFactory (GoF Factory)     │                     │
+│                     │         (creates adapter from URI scheme)    │                     │
+│                     └───────────────────────┬──────────────────────┘                     │
+│                                             │                                            │
+│       ┌──────────────────┬──────────────────┼──────────────────┬─────────────────┐       │
+│       ▼                  ▼                  ▼                  ▼                 ▼       │
+│ ┌───────────┐      ┌───────────┐      ┌───────────┐      ┌───────────┐     ┌───────────┐ │
+│ │ POSIX     │      │ Linux     │      │ AWS S3 /  │      │ Vector    │     │ NVMe-oF   │ │
+│ │ Direct IO │      │ io_uring  │      │ Ceph Obj  │      │ Embedding │     │ Fabric    │ │
+│ └───────────┘      └───────────┘      └───────────┘      └───────────┘     └───────────┘ │
+│ (posix://)         (iouring://)       (s3://)            (vector://)       (nvmeof://)   │
+│ 4096B Sector       4096B SQE/CQE      5MB Chunks         64B Vectors       4096B DMA     │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-┌────────────────────────────────────────────────────────┐
-│             setve.adapters.base.TargetAdapter          │
-│                      (Abstract Base)                   │
-└───────────────────────────▲────────────────────────────┘
-│
-│ Subclasses
-┌───────────────────────────┴────────────────────────────┐
-│          setve.adapters.io_uring.IoUringTargetAdapter  │
-├────────────────────────────────────────────────────────┤
-│ - ring: Ring (liburing structure)                      │
-│ - queue_depth: int                                     │
-│ - pending_futures: Dict[int, asyncio.Future[int]]      │
-│ - cq_event_fd: int                                     │
-├────────────────────────────────────────────────────────┤
-│ + initialize(config: Dict[str, Any]) -> None           │
-│ + read(target: TargetDescriptor, ...) -> int           │
-│ + write(target: TargetDescriptor, ...) -> int          │
-│ + flush(target: TargetDescriptor) -> None              │
-│ - _poll_completion_queue() -> None                     │
-└────────────────────────────────────────────────────────┘
+### 1.2 Storage Block Alignment Matrix
 
-```
+| Protocol Scheme | Adapter Class | Target Subsystem | Alignment Boundary |
+| :--- | :--- | :--- | :--- |
+| `posix://`, `file://` | `PosixDirectIOAdapter` | Local NVMe / POSIX filesystems | 4096 Bytes |
+| `iouring://`, `io_uring://` | `IoUringTargetAdapter` | Linux `io_uring` kernel submission/completion | 4096 Bytes |
+| `s3://` | `S3TargetAdapter` | High-throughput HTTP multipart S3 object store | 5 MB Chunks |
+| `vector://`, `embedding://` | `VectorTargetAdapter` | High-density vector embedding database | 64 Bytes |
+| `nvmeof://` | `NVMeOFAdapter` | Kernel-bypass NVMe over Fabrics target | 4096 Bytes |
 
 ---
 
@@ -129,47 +137,46 @@ To prevent worker processes from stalling while waiting for kernel I/O completio
 
 ---
 
-## 4. Error State Machine & Exception Handling
-
+## 4. Domain Exception Hierarchy & OS errno Mapping (`setve/exceptions.py`)
 
 ```text
-                  ┌─────────────────────────┐
-                  │    SQE Submission       │
-                  └────────────┬────────────┘
-                               │
-           ┌───────────────────┴───────────────────┐
-           │ Return Code Check                     │
-           ▼                                       ▼
-  [ SQE Available ]                       [ Ring Full (-EBUSY) ]
-           │                                       │
-           ▼                                       ▼
-Prepare & Submit SQE                   Flush In-Flight SQEs
-           │                           Wait for CQE Drain
-           │                                       │
-           │                                       └──────► Retry SQE
-           ▼
- [ CQE Status Result ]
-           │
-  ┌────────┴────────┐
-  │                 │
-
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 SETVE DOMAIN EXCEPTION TREE                                     │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│                                  ┌──────────────────────────┐                                   │
+│                                  │        SetveError        │ (Base Domain Exception)           │
+│                                  └─────────────┬────────────┘                                   │
+│                                                │                                                │
+│         ┌──────────────────────┬───────────────┴───────────────┬──────────────────────┐         │
+│         ▼                      ▼                               ▼                      ▼         │
+│  ┌──────────────┐    ┌───────────────────┐           ┌───────────────────┐    ┌───────────────┐ │
+│  │ Buffer-      │    │ Telemetry-        │           │ Blueprint-        │    │ AdapterError  │ │
+│  │ Alignment-   │    │ DivergenceError   │           │ Error             │    │ (Storage I/O) │ │
+│  │ Error        │    │ (Skew > 0.1% SLA) │           │ (DSL Validation)  │    └───────┬───────┘ │
+│  └──────────────┘    └───────────────────┘           └───────────────────┘            │         │
+│                                                                                       │         │
+│          ┌─────────────────────────┬─────────────────────────┬────────────────────────┘         │
+│          ▼                         ▼                         ▼                         ▼        │
+│   ┌──────────────┐          ┌──────────────┐          ┌──────────────┐          ┌─────────────┐ │
+│   │ Misaligned-  │          │ Storage-     │          │ Connection-  │          │ Target-     │ │
+│   │ OffsetError  │          │ Exhausted-   │          │ TimeoutError │          │ Unavailable-│ │
+│   │ (EINVAL)     │          │ Error(ENOSPC)│          │ (ETIMEDOUT)  │          │ Error       │ │
+│   └──────────────┘          └──────────────┘          └──────────────┘          └─────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-[ Result >= 0 ]   [ Result < 0 ]
-│                 │
-▼                 ▼
-Return Bytes    Map Errno to AdapterError
-(-EINVAL -> AlignmentError)
-(-EAGAIN -> BackpressureRetry)
+### 4.1 System Call `errno` Mapping Matrix
 
-```
-
-| Kernel Return Code | Exception Domain | Recovery Strategy |
-|---|---|---|
-| `-EBUSY` | `QueueFullError` | Call `io_uring_submit()`, drain active CQEs, and yield event loop execution via `asyncio.sleep(0)`. |
-| `-EAGAIN` | `BackpressureRetry` | Transient kernel queue saturation; retry SQE submission with exponential backoff. |
-| `-EINVAL` | `AlignmentError` | Unrecoverable buffer or offset misalignment ($< 4096\text{ bytes}$); terminate worker hot loop instantly. |
-| `-EIO` | `HardwareIoError` | Target storage device or interface fault; record error in telemetry and route payload to Dead Letter Queue (DLQ). |
+| OS `errno` Code | Constant | Mapped SETVE Domain Exception | Action Triggered |
+| :--- | :--- | :--- | :--- |
+| `errno.EINVAL` (22) | Invalid Argument | `MisalignedOffsetError` | Re-assert $4096\text{B}$ sector boundary |
+| `errno.ENOSPC` (28) | No Space Left | `StorageExhaustedError` | Trigger tiering / cleanup workflow |
+| `errno.ETIMEDOUT` (110) | Connection Timed Out | `ConnectionTimeoutError` | Exponential backoff retry |
+| `errno.ECONNREFUSED` (111) | Connection Refused | `TargetUnavailableError` | Mark node degraded / rebalance shard |
+| `errno.EACCES` (13) | Permission Denied | `PermissionDeniedError` | Abort run & report auth failure |
+| `-EBUSY` | Queue Busy | `QueueFullError` | Flush SQEs, drain CQEs, yield loop |
+| `-EAGAIN` | Try Again | `BackpressureRetry` | Transient queue saturation; exponential backoff |
 
 ---
 

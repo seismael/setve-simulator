@@ -30,41 +30,87 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
           ┌────────────┼────────────┐                                 ┌────────────┴────────────┐
           ▼            ▼            ▼                                 ▼                         ▼
      [ ADR-0001 ]  [ ADR-0002 ] [ HLD-ENV-001 ]                  [ HLD-K8S-001 ]          [ LLD-ORCH-001 ]
-          │                         │                                 │
-     ┌────┴────────────┐            │                                 │
-     ▼                 ▼            ▼                                 ▼
-[ LLD-ADAPTER-001 ][ LLD-MUTATOR-001 ][ LLD-VAL-001 ]             [ LLD-K8S-001 ]
 ```
 
+## Subsystem Architecture (C1 $\rightarrow$ C4)
 
----
+### 1. System Context Architecture (C1)
 
-## Subsystem Architecture & Features
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                SYSTEM CONTEXT (C1)                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌───────────────────────────┐                ┌────────────────────────────┐   │
+│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
+│   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
+│                 │                                            │                  │
+│                 │ In-Band Client Telemetry                   │ SUT Telemetry    │
+│                 v                                            v                  │
+│   ┌─────────────────────────────────────────────────────────────────────────┐   │
+│   │                   METRIC TRIANGULATION & ARBITRATION                    │   │
+│   │   (Validates if SUT matches physical Linux eBPF / XDP wire reality)     │   │
+│   └─────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. 3-Plane Subsystem Topology (C2)
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 CONTROL PLANE ORCHESTRATION                              │
-│  DeterministicShardGenerator ──► MultiCoreOrchestrator ──► ClusterSyncServicer (gRPC)    │
-└────────────────────────────────────────────┬─────────────────────────────────────────────┘
-                                             │
-                       Core-Pinned Multiprocessing (os.sched_setaffinity)
-                                             │
-┌────────────────────────────────────────────▼─────────────────────────────────────────────┐
-│                                 DATA PLANE EXECUTION KERNEL                              │
-│  BufferPool (Page-Aligned mmap) ──► PySIMDPayloadMutator (AVX-512 In-Place XOR)          │
-│                                            │                                             │
-│                       TargetAdapter Interface (GoF Factory)                             │
-│       ┌──────────────────┬─────────────────┼──────────────────┬─────────────────┐        │
-│       ▼                  ▼                 ▼                  ▼                 ▼        │
-│  [ POSIX O_DIRECT ] [ Linux io_uring ] [ S3 Multipart ] [ Vector Embed ] [ NVMe-oF ]    │
-└────────────────────────────────────────────┬─────────────────────────────────────────────┘
-                                             │
-┌────────────────────────────────────────────▼─────────────────────────────────────────────┐
-│                            VALIDATION & OBSERVABILITY PLANE                              │
-│  MetricCollector (64-Bucket HDR Histogram) ──► EBPFProbe ──► TelemetryEvaluator (<= 0.1%)│
-│                                            │                                             │
-│              Prometheus Exporter ──► ClickHouse Sink ──► JSON / ASCII Matrix             │
+│                                 SETVE 3-PLANE TOPOLOGY (C2)                              │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│ 1. CONTROL PLANE (Master Orchestrator)                                                   │
+│    ┌──────────────────┐    gRPC Barrier Sync    ┌───────────────────────────────────┐    │
+│    │  Master Process  │ ──────────────────────> │ Core-Pinned Worker Processes (0..N)│   │
+│    └────────┬─────────┘                         └─────────────────┬─────────────────┘    │
+│             │ Topology Sharding                                   │                      │
+│             v                                                     v                      │
+│ 2. DATA PLANE (Zero-Allocation Hot Path)                                                 │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │  mmap Ring Buffer Pool  ──>  SIMD Payload Mutator  ──>  Target Adapters (I/O)  │    │
+│    │  (4096B Page-Aligned)        (AVX-512 In-Place)         (POSIX O_DIRECT, S3)   │    │
+│    └──────────────────────────────────────────────────────────────┬─────────────────┘    │
+│                                                                   │                      │
+│ 3. VALIDATION PLANE (Ground-Truth Arbitration)                    │                      │
+│    ┌───────────────────────────────┐                              │                      │
+│    │ Linux eBPF / XDP Probe        │ (Out-of-Band Physical Bytes) │                      │
+│    └──────────────┬────────────────┘                              │                      │
+│                   │                                               │                      │
+│                   v                                               v                      │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │ Dual-Source Telemetry Evaluator (Mathematical Skew Verification <= 0.1%)       │    │
+│    │ Export Formats: ASCII Matrix | Prometheus (/metrics) | Structured JSON          │
+│    └────────────────────────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Hot-Path Memory & Vector Layout (C4)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     HOT PATH MEMORY & VECTOR LAYOUT (C4)                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1. Hardware Page-Aligned Buffer Pool (4096-Byte Boundaries)                    │
+│     ┌──────────────────┬──────────────────┬──────────────────┬──────────────┐   │
+│     │ Slot 0 (4096B)   │ Slot 1 (4096B)   │ Slot 2 (4096B)   │ Slot N...    │   │
+│     └──────────────────┴──────────────────┴──────────────────┴──────────────┘   │
+│     Allocated via mmap (POSIX) / VirtualAlloc (Windows)                         │
+│                                                                                 │
+│  2. In-Place AVX-512 SIMD Mutation (Zero Python Allocations)                    │
+│     ┌───────────────────────────────────────────────────────────────────────┐   │
+│     │ memoryview(raw_buffer)[offset : offset + length]                      │   │
+│     │ └─> np.bitwise_xor(view, entropy_mask, out=view)                     │   │
+│     └───────────────────────────────────────────────────────────────────────┘   │
+│     Mutates entropy directly in existing physical RAM without copying data.     │
+│                                                                                 │
+│  3. Direct I/O Submission                                                       │
+│     os.write(fd, buffer.view) / io_uring SQE -> Block Device Controller         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Supported Storage & Data-Plane Adapters
@@ -76,6 +122,52 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 | `s3://` | `S3TargetAdapter` | High-throughput HTTP multipart streaming object store driver | 5 MB Chunks |
 | `vector://`, `embedding://`| `VectorTargetAdapter` | High-density vector embedding similarity and upsert driver | 64 Bytes |
 | `nvmeof://` | `NVMeOFAdapter` | Kernel-bypass NVMe over Fabrics target driver (Enterprise tier) | 4096 Bytes |
+
+---
+
+## Distributed Horizontal Scaling & Multi-Node Cluster
+
+SETVE scales seamlessly from a single multi-core server to hundreds of bare-metal nodes using a **Shared-Nothing Distributed Architecture**:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 DISTRIBUTED HORIZONTAL TOPOLOGY                                 │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│                           ┌──────────────────────────────────────────┐                          │
+│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │   (Deterministic Sharding + gRPC Sync)   │                          │
+│                           └──────┬────────────────────────────┬──────┘                          │
+│                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
+│                   ┌──────────────┴──────────────┐             └──────────────┐                  │
+│                   ▼                             ▼                            ▼                  │
+│   ┌───────────────────────────────┐ ┌───────────────────────────────┐ ┌──────────────────────┐  │
+│   │    Physical Node 01 (K8s)     │ │    Physical Node 02 (K8s)     │ │ Physical Node N (K8s)│  │
+│   │ ┌───────────────────────────┐ │ │ ┌───────────────────────────┐ │ │ ┌──────────────────┐ │  │
+│   │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker    │ │  │
+│   │ ├───────────────────────────┤ │ │ ├───────────────────────────┤ │ │ ├──────────────────┤ │  │
+│   │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker    │ │  │
+│   │ └─────────────┬─────────────┘ │ │ └─────────────┬─────────────┘ │ │ └────────┬─────────┘ │  │
+│   └───────────────┼───────────────┘ └───────────────┼───────────────┘ └──────────┼───────────┘  │
+│                   │                                 │                            │              │
+│                   │ Non-Overlapping Direct I/O      │ Non-Overlapping Direct I/O │              │
+│                   ▼                                 ▼                            ▼              │
+│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐  │
+│   │                           DISTRIBUTED STORAGE SYSTEM UNDER TEST                          │  │
+│   │               (Shared NVMe-oF Fabric / Ceph / AWS S3 / Milvus Vector DB)                 │  │
+│   └──────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Vertical vs. Horizontal Scaling Matrix
+
+| Dimension | Vertical Scaling (Intra-Node) | Horizontal Scaling (Inter-Node) |
+| :--- | :--- | :--- |
+| **Mechanism** | `multiprocessing` + `sched_setaffinity` | gRPC barrier sync + Kubernetes DaemonSet |
+| **Concurrency** | 1 isolated process per physical CPU core | 1 to 64+ physical servers |
+| **Memory Model** | Page-aligned `mmap` ring buffers ($4096\text{B}$) | Independent physical RAM per server (Shared-Nothing) |
+| **Data Hot Path** | Zero-allocation `memoryview` + AVX-512 XOR | Zero inter-node network traffic during I/O |
+| **Target Scale** | $\ge 8\text{ GB/s}$ ($64\text{ Gbps}$) per server node | $\ge 1\text{ TB/s}$ ($8\text{ Tbps}$) cluster aggregate |
 
 ---
 
@@ -104,37 +196,44 @@ All metrics measured via the comprehensive benchmark suite (`python tests/benchm
 setve/
 ├── pyproject.toml             # Build specs, mypy --strict, ruff config
 ├── Makefile                   # Automation targets (lint, test, bench, docs)
-├── deploy/                    # Infrastructure manifests
-│   ├── helm/setve-cluster/    # Production Kubernetes Helm chart & values
-│   ├── k8s/operator/          # Kopf Kubernetes Operator CRD controller
-│   └── environments/          # Local, dev, staging, prod configurations
+├── deploy/                    # 3-Tier Enterprise Deployment & Infrastructure
+│   ├── README.md              # 3-Tier Deployment Guide
+│   ├── packaging/             # Immutable build definitions (docker, helm, operator)
+│   ├── environments/          # Target environment overlays (local, dev, staging, prod)
+│   └── emulator/              # Local multi-node distributed cluster simulator & gRPC sync
 ├── docs/                      # Dual-Indexed Documentation Engine
 │   ├── .index/                # Dependency DAG graph & JSON taxonomy schema
 │   ├── 01-brd/                # Business & System Requirements
 │   ├── 02-hld/                # High-Level Design (C1/C2 Topologies)
 │   ├── 03-adr/                # Architectural Decision Records (Guardrails)
 │   └── 04-lld/                # Low-Level Design (C3/C4 Implementations)
-├── scripts/                   # Tooling scripts
+├── scripts/                   # Validation & Audit Tooling
 │   ├── validate_docs.py       # YAML frontmatter & code reference validator
 │   ├── build_doc_graph.py     # Dependency DAG JSON index generator
-│   └── bootstrap_project.py   # Workspace structure generator
+│   ├── validate_deploy.py     # 3-tier deployment architecture validator
+│   └── run_full_manual_audit.py # Full end-to-end environment audit runner
 ├── setve/                     # Core Python 3.12+ Source Engine
 │   ├── adapters/              # Target storage drivers (POSIX, io_uring, S3, Vector)
 │   ├── payload/               # SIMD mutator, buffer pool, workload blueprints
 │   ├── orchestrator/          # Master controller, core-pinned worker, sync servicer
 │   └── validation/            # HDR histograms, Prometheus reporter, eBPF probe
-├── usecases/                  # Standalone Production Use Cases & Scenarios
+├── usecases/                  # 10 Standalone Production Scenarios & Stress Profiles
 │   ├── README.md              # Scenario execution guide
-│   ├── usecase_01_storage_stress.py       # NVMe & Direct I/O Saturation
-│   ├── usecase_02_dedup_compression.py    # Inline Deduplication & SIMD Sweeps
-│   ├── usecase_03_prometheus_monitoring.py# Live Prometheus & JSON Exporter
-│   ├── usecase_04_ebpf_triangulation.py   # Out-of-Band Skew Triangulation
-│   └── usecase_05_ai_vector_s3.py         # AI Embedding & S3 Multipart
-└── tests/                     # Verification Suite (40 Unit & Integration Tests)
-    ├── benchmark_suite.py     # Multi-subsystem performance benchmark suite
-    ├── benchmark_adapters.py  # Hot-path adapter sanity benchmark
-    ├── test_usecases.py       # End-to-end use case verification suite
-    └── test_*.py              # Comprehensive unit/integration tests
+│   ├── usecase_01_storage_stress.py       # Direct I/O NVMe Stress
+│   ├── usecase_02_dedup_compression.py    # Dedup & Compression
+│   ├── usecase_03_prometheus_monitoring.py# Prometheus Live Telemetry
+│   ├── usecase_04_ebpf_triangulation.py   # eBPF Triangulation
+│   ├── usecase_05_ai_vector_s3.py         # AI Vector DB & S3 Ingestion
+│   ├── usecase_06_ai_kv_cache_checkpointing.py # LLM KV-Cache Checkpointing
+│   ├── usecase_07_multitenant_qos_noisy_neighbor.py # Multi-Tenant QoS
+│   ├── usecase_08_chaos_node_failure.py   # Distributed Chaos & Fault Tolerance
+│   ├── usecase_09_storage_tiering_lifecycle.py # Storage Tiering & TCO
+│   └── usecase_10_tail_latency_microburst.py # HDR Tail Latency Microburst
+└── tests/                     # Verification Suite (62 Automated Unit & Integration Tests)
+    ├── test_alignment.py      # 4096B & 64B hardware alignment tests
+    ├── test_deploy.py         # 3-tier deployment structure tests
+    ├── test_mutator.py        # SIMD entropy mathematical tests
+    └── test_usecases.py       # End-to-end use case validation suite
 ```
 
 ---

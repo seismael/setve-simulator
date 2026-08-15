@@ -33,6 +33,27 @@ last_validated_date: "2026-08-05"
 `LLD-VAL-001` specifies the concrete design and memory layout of the SETVE observability, metric collection, and validation plane. The subsystem ensures zero heap allocations on hot data-plane loops while providing sub-microsecond latency profiling ($p_{50}, p_{90}, p_{99}, p_{99.9}$) and out-of-band ground-truth hardware counter triangulation ($\le 0.1\%$ skew SLA).
 
 ```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                   METRIC TRIANGULATION & ARBITRATION CONTEXT                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌───────────────────────────┐                ┌────────────────────────────┐   │
+│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
+│   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
+│                 │                                            │                  │
+│                 │ In-Band Client Telemetry                   │ SUT Telemetry    │
+│                 v                                            v                  │
+│   ┌─────────────────────────────────────────────────────────────────────────┐   │
+│   │               TELEMETRY EVALUATOR (Divergence Arbitration)              │   │
+│   │   (Validates if SUT matches physical Linux eBPF / XDP wire reality)     │   │
+│   └─────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.1 Data Plane & Master Telemetry Pipeline
+
+```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        DATA PLANE WORKER LOOP                          │
 │                                                                        │
@@ -74,6 +95,28 @@ last_validated_date: "2026-08-05"
 To guarantee zero allocations and prevent memory fragmentation inside high-frequency ($> 1\text{ M ops/s}$) worker loops, `MetricCollector` implements a 64-bucket logarithmic indexing model:
 
 $$\text{Bucket Index}(t) = \min(63, \max(0, \lfloor \log_2(t_{\text{ns}}) \rfloor))$$
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               64-BUCKET LOGARITHMIC HDR HISTOGRAM                               │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│   Elapsed Latency (t_ns)                                                                        │
+│   └─► Bucket Index = min(63, max(0, floor(log2(t_ns))))                                         │
+│                                                                                                 │
+│   ┌───────────────┬───────────────────────────────┬──────────────────────────────────────────┐  │
+│   │ Bucket Index  │ Latency Range                 │ Scale Classification                     │  │
+│   ├───────────────┼───────────────────────────────┼──────────────────────────────────────────┤  │
+│   │ Bucket 0      │ < 1 ns                        │ Sub-Nanosecond                           │  │
+│   │ Bucket 10     │ ~1.02 us (1,024 ns)           │ Microsecond Flash Line Rate              │  │
+│   │ Bucket 20     │ ~1.05 ms (1,048,576 ns)       │ Millisecond Storage Spikes               │  │
+│   │ Bucket 30     │ ~1.07 s                       │ High-Latency Timeout Threshold           │  │
+│   │ Bucket 63     │ Up to 9.22 x 10^18 ns         │ Overflow Protection                      │  │
+│   └───────────────┴───────────────────────────────┴──────────────────────────────────────────┘  │
+│                                                                                                 │
+│   Percentile Calculation (p50, p90, p99, p99.9) resolved via cumulative bucket distribution.   │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### 2.1 Bucket Resolution & Latency Range
 * **Bucket 0:** $< 1\text{ ns}$

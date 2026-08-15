@@ -4,38 +4,81 @@
 
 The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-throughput, platform-agnostic load generation and out-of-band telemetry verification framework designed to stress-test high-performance storage and data-plane systems (saturating $\ge 8\text{ GB/s}$ per node up to multi-TB/s clusters).
 
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                SYSTEM CONTEXT (C1)                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌───────────────────────────┐                ┌────────────────────────────┐   │
+│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
+│   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
+│                 │                                            │                  │
+│                 │ In-Band Client Telemetry                   │ SUT Telemetry    │
+│                 v                                            v                  │
+│   ┌─────────────────────────────────────────────────────────────────────────┐   │
+│   │                   METRIC TRIANGULATION & ARBITRATION                    │   │
+│   │   (Validates if SUT matches physical Linux eBPF / XDP wire reality)     │   │
+│   └─────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
-                       ┌───────────────────────────────┐
-                       │  Orchestration Master Engine  │
-                       │     (Control & Workflow)      │
-                       └───────────────┬───────────────┘
-                                       │
-                ┌──────────────────────┴──────────────────────┐
-                │ Spawns & Controls (1 Worker / Physical Core)│
-                ▼                                             ▼
-┌──────────────────────────────┐              ┌──────────────────────────────┐
-│       Worker Process 0       │              │       Worker Process N       │
-│ ┌──────────────────────────┐ │              │ ┌──────────────────────────┐ │
-│ │ uvloop Event Loop        │ │              │ │ uvloop Event Loop        │ │
-│ ├──────────────────────────┤ │   . . . . .  │ ├──────────────────────────┤ │
-│ │ PySIMDPayloadMutator     │ │              │ │ PySIMDPayloadMutator     │ │
-│ ├──────────────────────────┤ │              │ ├──────────────────────────┤ │
-│ │ TargetAdapter (io_uring) │ │              │ │ TargetAdapter (io_uring) │ │
-│ └─────────────┬────────────┘ │              │ └─────────────┬────────────┘ │
-└───────────────┼──────────────┘              └───────────────┼──────────────┘
-                │ Direct I/O                                  │ Direct I/O
-                └──────────────────────┬──────────────────────┘
-                                       ▼
-                       ┌───────────────────────────────┐
-                       │   SYSTEM UNDER TEST (SUT)     │
-                       └───────────────┬───────────────┘
-                                       │ Out-of-Band Observability
-                                       ▼
-                       ┌───────────────────────────────┐
-                       │ eBPF / ClickHouse             │
-                       │ Triangulation Engine          │
-                       └───────────────────────────────┘
+
+### 1.1 3-Plane Subsystem Topology (C2)
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 SETVE 3-PLANE TOPOLOGY (C2)                              │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│ 1. CONTROL PLANE (Master Orchestrator)                                                   │
+│    ┌──────────────────┐    gRPC Barrier Sync    ┌───────────────────────────────────┐    │
+│    │  Master Process  │ ──────────────────────> │ Core-Pinned Worker Processes (0..N)│   │
+│    └────────┬─────────┘                         └─────────────────┬─────────────────┘    │
+│             │ Topology Sharding                                   │                      │
+│             v                                                     v                      │
+│ 2. DATA PLANE (Zero-Allocation Hot Path)                                                 │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │  mmap Ring Buffer Pool  ──>  SIMD Payload Mutator  ──>  Target Adapters (I/O)  │    │
+│    │  (4096B Page-Aligned)        (AVX-512 In-Place)         (POSIX O_DIRECT, S3)   │    │
+│    └──────────────────────────────────────────────────────────────┬─────────────────┘    │
+│                                                                   │                      │
+│ 3. VALIDATION PLANE (Ground-Truth Arbitration)                    │                      │
+│    ┌───────────────────────────────┐                              │                      │
+│    │ Linux eBPF / XDP Probe        │ (Out-of-Band Physical Bytes) │                      │
+│    └──────────────┬────────────────┘                              │                      │
+│                   │                                               │                      │
+│                   v                                               v                      │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │ Dual-Source Telemetry Evaluator (Mathematical Skew Verification <= 0.1%)       │    │
+│    │ Export Formats: ASCII Matrix | Prometheus (/metrics) | Structured JSON          │    │
+│    └────────────────────────────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 1.2 Hot-Path Memory & Vector Layout (C4)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     HOT PATH MEMORY & VECTOR LAYOUT (C4)                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1. Hardware Page-Aligned Buffer Pool (4096-Byte Boundaries)                    │
+│     ┌──────────────────┬──────────────────┬──────────────────┬──────────────┐   │
+│     │ Slot 0 (4096B)   │ Slot 1 (4096B)   │ Slot 2 (4096B)   │ Slot N...    │   │
+│     └──────────────────┴──────────────────┴──────────────────┴──────────────┘   │
+│     Allocated via mmap (POSIX) / VirtualAlloc (Windows)                         │
+│                                                                                 │
+│  2. In-Place AVX-512 SIMD Mutation (Zero Python Allocations)                    │
+│     ┌───────────────────────────────────────────────────────────────────────┐   │
+│     │ memoryview(raw_buffer)[offset : offset + length]                      │   │
+│     │ └─> np.bitwise_xor(view, entropy_mask, out=view)                     │   │
+│     └───────────────────────────────────────────────────────────────────────┘   │
+│     Mutates entropy directly in existing physical RAM without copying data.     │
+│                                                                                 │
+│  3. Direct I/O Submission                                                       │
+│     os.write(fd, buffer.view) / io_uring SQE -> Block Device Controller         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
 ---
 
@@ -65,7 +108,17 @@ The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-thr
 
 ---
 
-## 3. Core Technical Constraints
+## 3. Core Technical Constraints & Engineering Pillars
+
+### 3.1 Five Core Engineering Pillars
+
+1. **Mathematical Entropy Mechanics & SIMD Mutation (`setve/payload/`):** In-place AVX-512 bitwise XOR payload mutation sweeps entropy ($\alpha \in [0.0, 1.0]$) at line rate ($\ge 66\text{ Gbps}$ per core) to defeat hardware storage deduplication and compression without heap allocations.
+2. **Lock-Free Sub-Microsecond HDR Latency Profiling (`setve/validation/`):** 64-bucket logarithmic indexing $\mathcal{O}(1)$ histograms prevent GC observer effects and capture tail latency percentiles ($p_{50}, p_{90}, p_{99}, p_{99.9}$).
+3. **Ground-Truth Wire Triangulation (`setve/validation/`):** Dual-source arbitration comparing client-reported bytes with Linux kernel `eBPF`/`XDP` hardware counters ($\le 0.1\%$ skew SLA).
+4. **10 Production Workload Profiles & Chaos Engineering (`usecases/`):** Full spectrum from LLM KV-cache checkpointing to multi-tenant QoS contention and distributed node chaos failover.
+5. **Kernel-Bypass & Direct I/O Adapters (`setve/adapters/`):** Polymorphic `TargetAdapter` strategy supporting `O_DIRECT`, Linux `io_uring` SQE/CQE rings, S3 multipart chunking, and high-density vector databases.
+
+### 3.2 Non-Negotiable Architectural Mandates
 
 1. **Zero-Allocation Hot Path:** Zero dynamic heap object instantiations within active I/O or mutation loops. Pre-allocated `mmap` buffers sliced via `memoryview`.
 2. **Physical Core Isolation:** 1 worker process per physical CPU core using `os.sched_setaffinity`. Independent `uvloop` event loops and `io_uring` instances per core.

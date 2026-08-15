@@ -1,4 +1,4 @@
-﻿---
+---
 id: "BRD-DIST-001"
 title: "Distributed Cluster Scaling & Horizontal Throughput Objectives"
 type: "BRD"
@@ -12,8 +12,16 @@ traceability:
   governed_by_adr: []
   parent_hld: null
   child_llds: []
-code_references: []
-test_references: []
+code_references:
+  - "setve/orchestrator/master.py"
+  - "setve/orchestrator/cluster.py"
+  - "setve/orchestrator/sync.py"
+  - "deploy/emulator/cluster_runner.py"
+test_references:
+  - "tests/test_cluster_sync.py"
+  - "tests/test_sharding.py"
+  - "tests/test_master_telemetry.py"
+  - "tests/test_deploy.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---

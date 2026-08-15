@@ -37,28 +37,44 @@ last_validated_date: "2026-08-05"
 `LLD-ORCH-001` provides the low-level technical specification for `MasterOrchestrator` and `ClusterOrchestratorServicer`. The module manages master control-plane state, distributes deterministic workload shards, and executes the two-phase gRPC barrier release sequence across registered cluster nodes.
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│             setve.orchestrator.master.MasterOrchestrator    │
-├─────────────────────────────────────────────────────────────┤
-│ - cluster_nodes: Dict[str, NodeRegistration]               │
-│ - barrier_state: BarrierStateEnum                           │
-│ - synchronized_start_us: int                                │
-├─────────────────────────────────────────────────────────────┤
-│ + start_cluster(blueprint: WorkloadBlueprint) -> None       │
-│ + register_node(node_id: str, cores: int) -> None           │
-│ + calculate_shards(total_throughput: int) -> Dict[str, int] │
-│ + release_barrier() -> int                                  │
-└──────────────────────────────┬──────────────────────────────┘
-│ Serves
-▼
-┌─────────────────────────────────────────────────────────────┐
-│       setve.orchestrator.sync.ClusterOrchestratorServicer   │
-├─────────────────────────────────────────────────────────────┤
-│ + DeployBlueprint(request, context) -> BlueprintResponse    │
-│ + SignalReady(request, context) -> WaitResponse             │
-│ + StreamControl(request_iterator, context) -> NodeStatus    │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 DISTRIBUTED HORIZONTAL TOPOLOGY                                 │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│                           ┌──────────────────────────────────────────┐                          │
+│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │   (Deterministic Sharding + gRPC Sync)   │                          │
+│                           └──────┬────────────────────────────┬──────┘                          │
+│                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
+│                   ┌──────────────┴──────────────┐             └──────────────┐                  │
+│                   ▼                             ▼                            ▼                  │
+│   ┌───────────────────────────────┐ ┌───────────────────────────────┐ ┌──────────────────────┐  │
+│   │    Physical Node 01 (K8s)     │ │    Physical Node 02 (K8s)     │ │ Physical Node N (K8s)│  │
+│   │ ┌───────────────────────────┐ │ │ ┌───────────────────────────┐ │ │ ┌──────────────────┐ │  │
+│   │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker    │ │  │
+│   │ ├───────────────────────────┤ │ │ ├───────────────────────────┤ │ │ ├──────────────────┤ │  │
+│   │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker    │ │  │
+│   │ └─────────────┬─────────────┘ │ │ └─────────────┬─────────────┘ │ │ └────────┬─────────┘ │  │
+│   └───────────────┼───────────────┘ └───────────────┼───────────────┘ └──────────┼───────────┘  │
+│                   │                                 │                            │              │
+│                   │ Non-Overlapping Direct I/O      │ Non-Overlapping Direct I/O │              │
+│                   ▼                                 ▼                            ▼              │
+│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐  │
+│   │                           DISTRIBUTED STORAGE SYSTEM UNDER TEST                          │  │
+│   │               (Shared NVMe-oF Fabric / Ceph / AWS S3 / Milvus Vector DB)                 │  │
+│   └──────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 1.1 Vertical vs. Horizontal Scaling Matrix
+
+| Dimension | Vertical Scaling (Intra-Node) | Horizontal Scaling (Inter-Node) |
+| :--- | :--- | :--- |
+| **Mechanism** | `multiprocessing` + `sched_setaffinity` | gRPC barrier sync + Kubernetes DaemonSet |
+| **Concurrency** | 1 isolated process per physical CPU core | 1 to 64+ physical servers |
+| **Memory Model** | Page-aligned `mmap` ring buffers ($4096\text{B}$) | Independent physical RAM per server (Shared-Nothing) |
+| **Data Hot Path** | Zero-allocation `memoryview` + AVX-512 XOR | Zero inter-node network traffic during I/O |
+| **Target Scale** | $\ge 8\text{ GB/s}$ ($64\text{ Gbps}$) per server node | $\ge 1\text{ TB/s}$ ($8\text{ Tbps}$) cluster aggregate |
 
 ---
 
@@ -184,3 +200,69 @@ class ClusterSyncServicer(ClusterOrchestratorServicer):
             synchronized_start_us=self._synchronized_start_us
         )
 ```
+
+---
+
+## 4. NUMA Topologies & Hardware Affinity Engine (`setve/orchestrator/affinity.py`)
+
+### 4.1 Dual-Socket Hardware Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                              DUAL-SOCKET NUMA HARDWARE TOPOLOGY                                 │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│   ┌────────────────────────────────────────┐       ┌────────────────────────────────────────┐   │
+│   │           NUMA NODE 0 (Socket 0)       │       │           NUMA NODE 1 (Socket 1)       │   │
+│   │ ┌──────────────────┐┌────────────────┐ │       │ ┌──────────────────┐┌────────────────┐ │   │
+│   │ │ Physical Core 0  ││ Physical Core 1│ │       │ │ Physical Core 2  ││ Physical Core 3│ │   │
+│   │ │  (L1/L2 Cache)   ││  (L1/L2 Cache) │ │       │ │  (L1/L2 Cache)   ││  (L1/L2 Cache) │ │   │
+│   │ └────────┬─────────┘└────────┬───────┘ │       │ └────────┬─────────┘└────────┬───────┘ │   │
+│   │          └─────────┬─────────┘         │       │          └─────────┬─────────┘         │   │
+│   │                    ▼                   │       │                    ▼                   │   │
+│   │             Shared L3 Cache            │       │             Shared L3 Cache            │   │
+│   │                    │                   │       │                    │                   │   │
+│   │                    ▼                   │       │                    ▼                   │   │
+│   │             Local Node 0 RAM           │       │             Local Node 1 RAM           │   │
+│   └────────────────────┬───────────────────┘       └────────────────────┬───────────────────┘   │
+│                        │                                                │                       │
+│                        └──────────── Inter-Socket Interconnect ─────────┘                       │
+│                                      (UPI / Infinity Fabric)                                    │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Core Pinning Mechanics
+* **Physical Core Filtering:** Inspects `/sys/devices/system/cpu` to isolate physical cores from SMT hyperthreads.
+* **Affinity Locking:** Invokes `os.sched_setaffinity(0, {core_id})` upon worker bootstrap to eliminate L1/L2 cache invalidation and inter-socket bus hops.
+
+---
+
+## 5. Zero-Allocation Structured Async Logging (`setve/logging.py`)
+
+### 5.1 Hot-Path Decoupling Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 HOT-PATH LOGGING DECOUPLING                                     │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│  [ Active Worker Hot Path ]                                                                     │
+│               │                                                                                 │
+│               ├── 1. Log-Level Gating Check (Is DEBUG enabled?) ──► [ FALSE: Instant 0ns No-Op] │
+│               │                                                                                 │
+│               ├── 2. IF TRUE: Enqueue tuple to lock-free memory queue (Zero File I/O)           │
+│               │                                                                                 │
+│  ═════════════╪════════════════════════════════════════════════════════════════════════════════ │
+│               │ Process Boundary                                                                │
+│               ▼                                                                                 │
+│  [ Dedicated Background Logging Worker Thread (AsyncLogQueueHandler) ]                          │
+│               │                                                                                 │
+│               ├── 3. Drain raw tuples from queue in batches                                     │
+│               ├── 4. Format Structured JSON: {"timestamp_ns": ..., "run_id": ..., "msg": ...}  │
+│               └── 5. Non-blocking flush to stdout / logfile / ClickHouse Sink                   │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+* **Zero Hot-Path Allocations:** Log-level gating ensures zero string interpolation overhead during active I/O loops.
+* **Context Inheritance:** Structured logs automatically bind `run_id`, `node_id`, `core_id`, and ISO-8601 nanosecond timestamps.
+

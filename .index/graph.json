@@ -79,10 +79,12 @@
       "domain": "infrastructure",
       "layer": "ingress",
       "code_references": [
-        "deploy/k8s/operator/controller.py",
-        "deploy/helm/setve-cluster/values.yaml"
+        "deploy/packaging/operator/controller.py",
+        "deploy/packaging/helm/setve-cluster/values.yaml",
+        "deploy/packaging/operator/crds/setvecluster-crd.yaml"
       ],
       "test_references": [
+        "tests/test_deploy.py",
         "tests/test_blueprint.py"
       ]
     },
@@ -197,8 +199,18 @@
       "status": "APPROVED",
       "domain": "control-plane",
       "layer": "compute-engine",
-      "code_references": [],
-      "test_references": []
+      "code_references": [
+        "setve/orchestrator/master.py",
+        "setve/orchestrator/cluster.py",
+        "setve/orchestrator/sync.py",
+        "deploy/emulator/cluster_runner.py"
+      ],
+      "test_references": [
+        "tests/test_cluster_sync.py",
+        "tests/test_sharding.py",
+        "tests/test_master_telemetry.py",
+        "tests/test_deploy.py"
+      ]
     },
     "BRD-SETVE-001": {
       "path": "docs\\01-brd\\data-plane\\BRD-SETVE-001.md",
@@ -207,8 +219,20 @@
       "status": "APPROVED",
       "domain": "data-plane",
       "layer": "compute-engine",
-      "code_references": [],
-      "test_references": []
+      "code_references": [
+        "setve/payload/buffer_pool.py",
+        "setve/payload/mutator.py",
+        "setve/adapters/posix.py",
+        "setve/adapters/io_uring.py",
+        "setve/validation/metric_collector.py",
+        "setve/validation/evaluator.py"
+      ],
+      "test_references": [
+        "tests/test_alignment.py",
+        "tests/test_mutator.py",
+        "tests/test_posix_io.py",
+        "tests/test_telemetry_evaluator.py"
+      ]
     }
   },
   "edges": [

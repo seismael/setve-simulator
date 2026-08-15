@@ -39,40 +39,83 @@ compose the system:
 | **Interface** | Protocol-agnostic target I/O over `DirectBuffer` | `setve.adapters.*` |
 | **Validation** | Out-of-band eBPF telemetry triangulation | `setve.validation.*` |
 
-### 1.1 System Topology Diagram
+### 1.0 System Context Diagram (C1)
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      ORCHESTRATION CONTROL PLANE                       │
-│             (Master Controller · Topologies · Blueprints)              │
-└────────────────────────────────┬────────────────────────────────────────┘
-                                 │  IPC / Shared-Memory Signals
-                 ┌───────────────┴───────────────┐
-                 ▼                               ▼
-┌────────────────────────────────┐ ┌────────────────────────────────┐
-│  WORKER 0  (Core-Pinned)       │ │  WORKER N  (Core-Pinned)       │
-│ ┌────────────────────────────┐ │ │ ┌────────────────────────────┐ │
-│ │ uvloop Event Loop          │ │ │ │ uvloop Event Loop          │ │
-│ ├────────────────────────────┤ │ │ ├────────────────────────────┤ │
-│ │ PySIMDPayloadMutator       │ │ │ │ PySIMDPayloadMutator       │ │
-│ ├────────────────────────────┤ │ │ ├────────────────────────────┤ │
-│ │ Page-Aligned Ring Buffer   │ │ │ │ Page-Aligned Ring Buffer   │ │
-│ ├────────────────────────────┤ │ │ ├────────────────────────────┤ │
-│ │ TargetAdapter (io_uring)   │ │ │ │ TargetAdapter (io_uring)   │ │
-│ └─────────────┬──────────────┘ │ │ └─────────────┬──────────────┘ │
-└───────────────┼────────────────┘ └───────────────┼────────────────┘
-                │  Zero-Copy (O_DIRECT / io_uring) │
-                ▼                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       SYSTEM UNDER TEST (SUT)                          │
-│            NVMe-oF · POSIX · S3 · Vector DB Targets                   │
-└────────────────────────────────┬────────────────────────────────────────┘
-                                 │  Out-of-Band Hardware Signals
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                 TELEMETRY TRIANGULATION PLANE                          │
-│        eBPF / XDP Probes  →  ClickHouse Analytics Engine              │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                SYSTEM CONTEXT (C1)                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌───────────────────────────┐                ┌────────────────────────────┐   │
+│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
+│   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
+│                 │                                            │                  │
+│                 │ In-Band Client Telemetry                   │ SUT Telemetry    │
+│                 v                                            v                  │
+│   ┌─────────────────────────────────────────────────────────────────────────┐   │
+│   │                   METRIC TRIANGULATION & ARBITRATION                    │   │
+│   │   (Validates if SUT matches physical Linux eBPF / XDP wire reality)     │   │
+│   └─────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.1 3-Plane Subsystem Topology Diagram (C2)
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 SETVE 3-PLANE TOPOLOGY (C2)                              │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│ 1. CONTROL PLANE (Master Orchestrator)                                                   │
+│    ┌──────────────────┐    gRPC Barrier Sync    ┌───────────────────────────────────┐    │
+│    │  Master Process  │ ──────────────────────> │ Core-Pinned Worker Processes (0..N)│   │
+│    └────────┬─────────┘                         └─────────────────┬─────────────────┘    │
+│             │ Topology Sharding                                   │                      │
+│             v                                                     v                      │
+│ 2. DATA PLANE (Zero-Allocation Hot Path)                                                 │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │  mmap Ring Buffer Pool  ──>  SIMD Payload Mutator  ──>  Target Adapters (I/O)  │    │
+│    │  (4096B Page-Aligned)        (AVX-512 In-Place)         (POSIX O_DIRECT, S3)   │    │
+│    └──────────────────────────────────────────────────────────────┬─────────────────┘    │
+│                                                                   │                      │
+│ 3. VALIDATION PLANE (Ground-Truth Arbitration)                    │                      │
+│    ┌───────────────────────────────┐                              │                      │
+│    │ Linux eBPF / XDP Probe        │ (Out-of-Band Physical Bytes) │                      │
+│    └──────────────┬────────────────┘                              │                      │
+│                   │                                               │                      │
+│                   v                                               v                      │
+│    ┌────────────────────────────────────────────────────────────────────────────────┐    │
+│    │ Dual-Source Telemetry Evaluator (Mathematical Skew Verification <= 0.1%)       │    │
+│    │ Export Formats: ASCII Matrix | Prometheus (/metrics) | Structured JSON          │    │
+│    └────────────────────────────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 Hot-Path Memory & Vector Layout (C4)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     HOT PATH MEMORY & VECTOR LAYOUT (C4)                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1. Hardware Page-Aligned Buffer Pool (4096-Byte Boundaries)                    │
+│     ┌──────────────────┬──────────────────┬──────────────────┬──────────────┐   │
+│     │ Slot 0 (4096B)   │ Slot 1 (4096B)   │ Slot 2 (4096B)   │ Slot N...    │   │
+│     └──────────────────┴──────────────────┴──────────────────┴──────────────┘   │
+│     Allocated via mmap (POSIX) / VirtualAlloc (Windows)                         │
+│                                                                                 │
+│  2. In-Place AVX-512 SIMD Mutation (Zero Python Allocations)                    │
+│     ┌───────────────────────────────────────────────────────────────────────┐   │
+│     │ memoryview(raw_buffer)[offset : offset + length]                      │   │
+│     │ └─> np.bitwise_xor(view, entropy_mask, out=view)                     │   │
+│     └───────────────────────────────────────────────────────────────────────┘   │
+│     Mutates entropy directly in existing physical RAM without copying data.     │
+│                                                                                 │
+│  3. Direct I/O Submission                                                       │
+│     os.write(fd, buffer.view) / io_uring SQE -> Block Device Controller         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 1.2 Core Subsystems
@@ -130,11 +173,48 @@ compose the system:
 | 2 | **In-Place Mutation** | `PySIMDPayloadMutator` vectorizes block mutations in C/SIMD using a static mask for target entropy $\alpha$. |
 | 3 | **Queue Submission** | Worker passes the `DirectBuffer` slice directly to the `TargetAdapter` (e.g., SQE into `io_uring`). |
 | 4 | **DMA Execution** | Kernel DMA engines transfer data directly from pinned host memory, bypassing OS page caches. |
-| 5 | **Completion Reaping** | CQE callbacks release the slice back to the ring buffer pool—zero garbage collection. |
+### 2.3 10 Production Workload Profiles & Chaos Engineering Matrix
+
+| # | Scenario Script | Domain | Target Subsystem | Primary Engineering Metric |
+| :--- | :--- | :--- | :--- | :--- |
+| **01** | `usecase_01_storage_stress.py` | Data Plane | `PosixDirectIOAdapter`, `MultiCoreOrchestrator` | Aggregate Gbps, IOPS, Core Pinning, Tail Latency |
+| **02** | `usecase_02_dedup_compression.py` | Payload Engine | `PySIMDPayloadMutator`, AVX-512 SIMD | Shannon Entropy, Zlib Savings %, Dedup Ratio |
+| **03** | `usecase_03_prometheus_monitoring.py` | Observability | `MetricCollector`, Prometheus `/metrics`, JSON | Sub-ms Latency Percentiles ($p_{50}, p_{90}, p_{99}$), Scrape Export |
+| **04** | `usecase_04_ebpf_triangulation.py` | Validation | `EBPFProbe`, `TelemetryEvaluator` | Wire vs Client Skew ($\le 0.1\%$ SLA), MTU/Packet Drops |
+| **05** | `usecase_05_ai_vector_s3.py` | Target Drivers | `VectorTargetAdapter`, `S3TargetAdapter` | Upsert IOPS, Concurrent Top-K Nearest-Neighbor QPS |
+| **06** | `usecase_06_ai_kv_cache_checkpointing.py` | AI Data Plane | Prefill Burst, PagedAttention KV-Cache | Time-To-First-Token (TTFT), ITL ($p_{50}, p_{90}, p_{99}$) |
+| **07** | `usecase_07_multitenant_qos_noisy_neighbor.py` | Control Plane | Multi-Tenant QoS, Token-Bucket | Tail Inflation Ratio ($p_{99}$ Jitter Multiplier), SLA Restoration |
+| **08** | `usecase_08_chaos_node_failure.py` | Distributed | `DeterministicShardGenerator`, Node Eviction | Dynamic Shard Rebalance Latency ($\mu\text{s}$), SplitMix64 Uniformity |
+| **09** | `usecase_09_storage_tiering_lifecycle.py` | Target Flow | Hot NVMe $\rightarrow$ Warm Block $\rightarrow$ Cold S3 | Lifecycle Storage Cost Reduction (% ROI), 3-Year Enterprise TCO |
+| **10** | `usecase_10_tail_latency_microburst.py` | Observability | 64-Bucket HDR Histogram, Microburst Spikes | $p_{99.9} / p_{99.99}$ Tail Latency Degradation, Percentile Tags |
+
+### 2.4 Workload Blueprint DSL & Dynamic Phase Engine (`setve/payload/blueprint.py`)
+
+Workloads in SETVE are defined declaratively via YAML or JSON schemas, decoupling the benchmark profile from the execution runtime.
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               MULTI-PHASE WORKLOAD STATE MACHINE                                │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│   ┌──────────────────┐    Ramp Rate (Gbps/s)    ┌──────────────────┐    Steady Load Duration    │
+│   │  Phase 1: WARMUP │ ───────────────────────> │ Phase 2: RAMP-UP │ ─────────────────────────┐ │
+│   │ (Pre-fill Cache) │                          │ (0 -> 100 Gbps)  │                          │ │
+│   └──────────────────┘                          └──────────────────┘                          │ │
+│                                                                                               │ │
+│   ┌──────────────────┐    Graceful Flushes      ┌──────────────────┐                          │ │
+│   │Phase 4: COOLDOWN │ <─────────────────────── │Phase 3: STEADY   │ <────────────────────────┘ │
+│   │(Verify Drains)   │                          │(SLA Measurement) │                            │
+│   └──────────────────┘                          └──────────────────┘                            │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Blueprint Features
+1. **Multi-Phase Execution:** Automatic state machine managing Warmup $\rightarrow$ Ramp-Up $\rightarrow$ Steady State $\rightarrow$ Cooldown.
+2. **Workload Mixture:** Configurable read/write ratios (e.g. 70/30), block size probability distributions (e.g., $60\%$ 4KB, $30\%$ 64KB, $10\%$ 1MB), and dynamic entropy targets ($\alpha \in [0.0, 1.0]$).
+3. **Automated SLA Validation:** Declares pass/fail criteria for throughput bounds, $p_{99}$ latency thresholds, and maximum allowable eBPF telemetry skew ($\le 0.1\%$).
 
 ---
-
-## 3. Abstract Interface Contracts
 
 ### 3.1 `TargetAdapter` ABC (`setve.adapters.base`)
 

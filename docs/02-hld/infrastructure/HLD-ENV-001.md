@@ -47,6 +47,37 @@ The environment topology provides developer agility on local workstations while 
   * Local containerized dependencies (SETVE, MinIO, Prometheus, Grafana) managed via `deploy/environments/local/docker-compose.yml`.
 * **Resource Bounds:** 2 to 4 CPU cores, mock storage directories, loopback network (`127.0.0.1`).
 
+#### 2.1.1 Local Multi-Node Cluster Emulator (`deploy/emulator/cluster_runner.py`)
+To validate distributed multi-node coordination without cloud infrastructure, the **Cluster Emulator** runs locally:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                LOCAL MULTI-NODE CLUSTER EMULATOR                                │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│   ┌────────────────────────────────────────────────────────────────────────┐                    │
+│   │             Master Coordinator (deploy/emulator/cluster_runner.py)     │                    │
+│   │  - ClusterSyncServicer (Real gRPC Barrier Engine)                      │                    │
+│   │  - DeterministicShardGenerator (Assigns non-overlapping blocks)         │                    │
+│   └──────┬──────────────────────────────────────────────────────────┬──────┘                    │
+│          │                                                          │                           │
+│          ▼ gRPC Barrier (SIGNAL_READY -> RELEASE)                   ▼ gRPC Barrier              │
+│   ┌────────────────────────────────────────┐ ┌────────────────────────────────────────┐        │
+│   │   Emulated Node 00 (Worker Fleet)      │ │   Emulated Node 01 (Worker Fleet)      │        │
+│   │  - Process Pool: Core 0, Core 1        │ │  - Process Pool: Core 0, Core 1        │        │
+│   │  - Local DirectBuffer Ring Allocations │ │  - Local DirectBuffer Ring Allocations │        │
+│   │  - In-Place SIMD Mutation              │ │  - In-Place SIMD Mutation              │        │
+│   │  - Independent HDR Histograms          │ │  - Independent HDR Histograms          │        │
+│   └──────────────────┬─────────────────────┘ └──────────────────┬─────────────────────┘        │
+│                      │                                          │                               │
+│                      └──────────────────┬───────────────────────┘                               │
+│                                         ▼ Phase 3: Telemetry Collation                          │
+│   ┌─────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ ClusterTelemetrySummary: Merged Throughput (Gbps), True p99 Latency, Prometheus /metrics │   │
+│   └─────────────────────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### 2.2 Dev Environment (Remote Developer Sandbox)
 * **Goal:** Enable engineers to validate kernel-level code (`io_uring` ring sizes, SIMD AVX-512 vectorization, eBPF event probes) on dedicated, remote hardware without polluting shared environments.
 * **Architecture:**

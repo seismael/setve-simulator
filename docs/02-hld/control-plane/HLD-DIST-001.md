@@ -31,39 +31,33 @@ HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-no
 
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        GLOBAL MASTER ORCHESTRATOR NODE                         │
-│   ┌───────────────────────────┐         ┌────────────────────────────────────┐  │
-│   │ Workload Sharding Manager │         │ gRPC Barrier Sync Server           │  │
-│   └─────────────┬─────────────┘         └─────────────────┬──────────────────┘  │
-└─────────────────┼─────────────────────────────────────────┼─────────────────────┘
-│ Blueprint Distribution                  │ Phase Signals (gRPC)
-┌──────────┴─────────────────────────────────────────┴──────────┐
-▼                                                               ▼
-┌──────────────────────────────────────────────┐┌──────────────────────────────────────────────┐
-│         PHYSICAL COMPUTE NODE 1              ││         PHYSICAL COMPUTE NODE N              │
-│ ┌──────────────────────────────────────────┐ ││ ┌──────────────────────────────────────────┐ │
-│ │ Local Node Daemon (setve-node)           │ ││ │ Local Node Daemon (setve-node)           │ │
-│ ├──────────────────────────────────────────┤ ││ ├──────────────────────────────────────────┤ │
-│ │ Core-Pinned Worker Pool (1..K Cores)     │ ││ │ Core-Pinned Worker Pool (1..K Cores)     │ │
-│ │  ├── uvloop Event Loop                   │ ││ │  ├── uvloop Event Loop                   │ │
-│ │  ├── PySIMDPayloadMutator                │ ││ │  ├── PySIMDPayloadMutator                │ │
-│ │  └── IoUringTargetAdapter                │ ││ │  └── IoUringTargetAdapter                │ │
-│ └────────────────────┬─────────────────────┘ ││ └────────────────────┬─────────────────────┘ │
-└──────────────────────┼───────────────────────┘└──────────────────────┼───────────────────────┘
-│                                              │
-│ Zero-Copy Data Push/Pull (O_DIRECT / io_uring)│
-▼                                              ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           SYSTEM UNDER TEST (SUT)                               │
-│                   (Distributed Block / File / S3 / Vector SUT)                  │
-└──────────────────────────────────────┬──────────────────────────────────────────┘
-│ Hardware-Level Out-of-Band Probes
-▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                     OUT-OF-BAND TELEMETRY TRIANGULATION                         │
-│            (eBPF / XDP Interface Probes -> ClickHouse Analytics Engine)         │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 DISTRIBUTED HORIZONTAL TOPOLOGY                                 │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│                           ┌──────────────────────────────────────────┐                          │
+│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │   (Deterministic Sharding + gRPC Sync)   │                          │
+│                           └──────┬────────────────────────────┬──────┘                          │
+│                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
+│                   ┌──────────────┴──────────────┐             └──────────────┐                  │
+│                   ▼                             ▼                            ▼                  │
+│   ┌───────────────────────────────┐ ┌───────────────────────────────┐ ┌──────────────────────┐  │
+│   │    Physical Node 01 (K8s)     │ │    Physical Node 02 (K8s)     │ │ Physical Node N (K8s)│  │
+│   │ ┌───────────────────────────┐ │ │ ┌───────────────────────────┐ │ │ ┌──────────────────┐ │  │
+│   │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker (uvloop)    │ │ │ │ Core 0 Worker    │ │  │
+│   │ ├───────────────────────────┤ │ │ ├───────────────────────────┤ │ │ ├──────────────────┤ │  │
+│   │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker (uvloop)    │ │ │ │ Core 1 Worker    │ │  │
+│   │ └─────────────┬─────────────┘ │ │ └─────────────┬─────────────┘ │ │ └────────┬─────────┘ │  │
+│   └───────────────┼───────────────┘ └───────────────┼───────────────┘ └──────────┼───────────┘  │
+│                   │                                 │                            │              │
+│                   │ Non-Overlapping Direct I/O      │ Non-Overlapping Direct I/O │              │
+│                   ▼                                 ▼                            ▼              │
+│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐  │
+│   │                           DISTRIBUTED STORAGE SYSTEM UNDER TEST                          │  │
+│   │               (Shared NVMe-oF Fabric / Ceph / AWS S3 / Milvus Vector DB)                 │  │
+│   └──────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 1.1 Architectural Subsystems
@@ -72,6 +66,16 @@ HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-no
 2. **Local Node Daemon (`setve-node`):** A lightweight agent running on each compute host that discovers NUMA topology, manages local core pinning (`os.sched_setaffinity`), spawns worker container/process pools, and monitors host memory alignment constraints.
 3. **Shared-Nothing Worker Fleet:** Core-pinned Python processes operating in isolation. Workers maintain zero runtime communication with each other during active I/O execution, ensuring strict $\mathcal{O}(N)$ scaling linearity.
 4. **Out-of-Band Telemetry Sink:** Independent eBPF/XDP network and block layer probes on each node that export raw wire metrics directly to ClickHouse over dedicated management interfaces.
+
+### 1.2 Vertical vs. Horizontal Scaling Matrix
+
+| Dimension | Vertical Scaling (Intra-Node) | Horizontal Scaling (Inter-Node) |
+| :--- | :--- | :--- |
+| **Mechanism** | `multiprocessing` + `sched_setaffinity` | gRPC barrier sync + Kubernetes DaemonSet |
+| **Concurrency** | 1 isolated process per physical CPU core | 1 to 64+ physical servers |
+| **Memory Model** | Page-aligned `mmap` ring buffers ($4096\text{B}$) | Independent physical RAM per server (Shared-Nothing) |
+| **Data Hot Path** | Zero-allocation `memoryview` + AVX-512 XOR | Zero inter-node network traffic during I/O |
+| **Target Scale** | $\ge 8\text{ GB/s}$ ($64\text{ Gbps}$) per server node | $\ge 1\text{ TB/s}$ ($8\text{ Tbps}$) cluster aggregate |
 
 ---
 

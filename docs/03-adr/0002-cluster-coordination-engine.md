@@ -22,21 +22,32 @@ owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
 
-
 # ADR-0002: Select Cluster Coordination Engine and Privilege Boundaries
 
-## Context & Problem Statement
-To coordinate a fleet of compute workers executing high-throughput I/O tests, the master control plane needs a synchronization mechanism for barrier signals and target slice assignments, avoiding single-point lock contention.
+## 1. Context & Problem Statement
+To coordinate a fleet of distributed compute workers executing high-throughput I/O tests against storage data planes ($\ge 1\text{ TB/s}$ cluster aggregate), the orchestration plane requires a synchronization mechanism for barrier signals and target slice assignments without introducing runtime lock contention.
 
-## Evaluated Alternatives
-1. **NATS JetStream:** High performance, pub/sub model. Requires external infrastructure.
-2. **etcd:** Strong consistency, standard in k8s. Heavy overhead for simple barrier sync.
-3. **Custom gRPC (Selected):** Direct master-worker communication. No external dependencies, natively supports barrier synchronization.
+---
 
-## Decision & Justification
-**Selected Option:** Custom gRPC.
-**Rationale:** A masterless/gRPC coordination model provides no single-point lock during execution loops and avoids external dependencies, facilitating ephemeral CI/CD test clusters. Container privilege bounds (CAP_SYS_ADMIN, Host IPC) will be enforced for worker containers to access io_uring and SR-IOV networks.
+## 2. Evaluated Alternatives
 
-## Trade-offs & Consequences
-* **Positive:** Minimal deployment footprint, zero external broker latency.
-* **Negative:** Requires custom implementation of partition reassignment if a node drops.
+1. **NATS JetStream:** High performance, pub/sub model. Requires deploying and maintaining external broker clusters.
+2. **etcd / ZooKeeper:** Strong consistency, standard in Kubernetes. High latency and heavy resource overhead for high-frequency barrier handshakes.
+3. **Shared-Nothing SplitMix64 + Custom gRPC Barrier (Selected):** Direct master-worker gRPC communication for 3-phase synchronization with local mathematical shard computation.
+
+---
+
+## 3. Decision & Justification
+**Selected Option:** Shared-Nothing SplitMix64 Deterministic Sharding + Custom gRPC Barrier Synchronization.
+
+### Rationale:
+* **Zero Hot-Path Inter-Node Traffic:** Deterministic SplitMix64 mathematical hash calculations eliminate runtime master queries for block offsets.
+* **Nanosecond Barrier Alignment:** 3-phase gRPC handshake (`SIGNAL_READY`, `BARRIER_RELEASE`, `SIGNAL_COMPLETED`) guarantees synchronized load release without startup skew.
+* **Minimal Footprint:** Runs independently in bare-metal, containerized, and local emulation environments without external message brokers.
+* **Privilege Bounds:** Worker containers enforce `CAP_SYS_ADMIN` and Host IPC bounds to access physical NVMe Direct I/O and `io_uring` kernel rings.
+
+---
+
+## 4. Trade-offs & Consequences
+* **Positive:** Linearly scalable ($\mathcal{O}(N)$), zero broker latency, lightweight CI/CD integration.
+* **Negative:** Node drop events require deterministic recalculation of active shard intervals by the master orchestrator.
