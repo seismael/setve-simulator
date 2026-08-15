@@ -86,7 +86,7 @@ async def run_microburst_simulation(
     p999_c = combined_collector.percentile_ms(0.999)
     degrad_factor = p999_c / max(p50_s, 0.001)
 
-
+    # Render ASCII Latency Distribution Histogram
     print("\n+--------------------------------------------------------------------------------+")
     print("| 64-BUCKET LOGARITHMIC HDR HISTOGRAM TAIL LATENCY REPORT                        |")
     print("+--------------------------------------------------------------------------------+")
@@ -99,7 +99,21 @@ async def run_microburst_simulation(
     print(f"| Micro-Burst Contended (p99):    {p99_c:>16.3f} ms                           |")
     print(f"| Micro-Burst Tail-Spike (p99.9): {p999_c:>16.3f} ms                           |")
     print(f"| Tail Degradation (p99.9 / p50): {degrad_factor:>16.2f}x                            |")
-    print("+--------------------------------------------------------------------------------+\n")
+    print("+--------------------------------------------------------------------------------+")
+
+    # Visual ASCII Histogram Distribution
+    print("\n--- LATENCY HDR DENSITY PROFILE ---")
+    active_buckets = [
+        (idx, count) for idx, count in enumerate(combined_collector._buckets) if count > 0
+    ]
+    max_count = max((c for _, c in active_buckets), default=1)
+    for idx, count in active_buckets:
+        ns_bound = 1 << idx
+        ms_bound = ns_bound / 1e6
+        bar_len = int((count / max_count) * 40)
+        bar = "#" * max(1, bar_len)
+        print(f"  <={ms_bound:>8.3f} ms [{count:>5} ops] | {bar}")
+    print("------------------------------------\n")
 
     return 0
 
@@ -113,25 +127,25 @@ def main() -> int:
         "--steady-ops",
         type=int,
         default=1500,
-        help="Number of steady-state baseline operations",
+        help="Number of steady-state baseline operations (default: 1500)",
     )
     parser.add_argument(
         "--burst-cycles",
         type=int,
         default=3,
-        help="Number of micro-burst traffic surges",
+        help="Number of micro-burst traffic surges (default: 3)",
     )
     parser.add_argument(
         "--burst-intensity",
         type=int,
         default=300,
-        help="Number of unpaced back-to-back operations per burst",
+        help="Number of unpaced back-to-back operations per burst (default: 300)",
     )
     parser.add_argument(
         "--target-uri",
         type=str,
         default="posix:///tmp/microburst_target.dat",
-        help="Target storage URI",
+        help="Target storage URI (default: posix:///tmp/microburst_target.dat)",
     )
     args = parser.parse_args()
 

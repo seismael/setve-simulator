@@ -58,7 +58,6 @@ async def run_storage_tiering_simulation(
     hot_iops = hot_ops / hot_duration
     hot_p99 = hot_collector.percentile_ms(0.99)
 
-
     # 2. Warm Tier Execution (Block Staging Consolidation)
     warm_uri = "posix:///tmp/tier_warm_block.dat"
     print(f"\n[Tier 2: Warm Block] Consolidating {warm_mb} MB in 1 MB sequential chunks...")
@@ -76,7 +75,6 @@ async def run_storage_tiering_simulation(
         warm_collector.record_latency(time.perf_counter_ns() - op_t0)
         warm_collector.record_bytes(w)
     warm_duration = max((time.perf_counter_ns() - t0_warm) / 1e9, 1e-9)
-
 
     warm_gbps = (warm_mb * 1024 * 1024 * 8) / warm_duration / 1e9
 
@@ -108,16 +106,33 @@ async def run_storage_tiering_simulation(
     cold_mb_total = (cold_chunks * cold_block_size) / (1024 * 1024)
     cold_gbps = (cold_chunks * cold_block_size * 8) / cold_duration / 1e9
 
+    # Economic & Cost Savings Analysis
+    # Standard Cloud Storage Pricing Models ($/GB/month)
+    hot_cost_per_gb = 0.250  # Provisioned IOPS NVMe SSD
+    warm_cost_per_gb = 0.080  # Standard Block Volume (GP3)
+    cold_cost_per_gb = 0.023  # S3 Standard Object Store
+
+    total_gb = (cold_chunks * cold_block_size) / (1024 * 1024 * 1024)
+    hot_monthly = total_gb * hot_cost_per_gb
+    warm_monthly = total_gb * warm_cost_per_gb
+    cold_monthly = total_gb * cold_cost_per_gb
+    savings_pct = ((hot_cost_per_gb - cold_cost_per_gb) / hot_cost_per_gb) * 100.0
+
     # Summary Report
     print("\n+--------------------------------------------------------------------------------+")
-    print("| MULTI-TIER STORAGE LIFECYCLE SUMMARY                                           |")
+    print("| MULTI-TIER STORAGE LIFECYCLE & COST REDUCTION SUMMARY                          |")
     print("+--------------------------------------------------------------------------------+")
     hot_desc = f"{hot_iops:,.1f} IOPS (p99: {hot_p99:.3f} ms)"
-    print(f"| Hot NVMe Tier Throughput:      {hot_desc:>46} |")
+    print(f"| Hot NVMe Tier (Active Set):    {hot_desc:>46} |")
     warm_desc = f"{warm_gbps:.2f} Gbps ({warm_mb} MB transferred)"
-    print(f"| Warm Block Tier Consolidation: {warm_desc:>46} |")
+    print(f"| Warm Block Tier (Staging):     {warm_desc:>46} |")
     cold_desc = f"{cold_gbps:.2f} Gbps ({cold_mb_total:.1f} MB archived)"
-    print(f"| Cold S3 Object Tier Archival:  {cold_desc:>46} |")
+    print(f"| Cold S3 Object Tier (Archival):{cold_desc:>46} |")
+    print("+--------------------------------------------------------------------------------+")
+    print(f"| Storage Cost on Hot NVMe:      {f'${hot_monthly * 1000:,.2f} / TB / month':>46} |")
+    print(f"| Storage Cost on Warm Block:    {f'${warm_monthly * 1000:,.2f} / TB / month':>46} |")
+    print(f"| Storage Cost on Cold S3:       {f'${cold_monthly * 1000:,.2f} / TB / month':>46} |")
+    print(f"| Net Lifecycle Cost Reduction:  {f'{savings_pct:.1f}% Savings':>46} |")
     print("+--------------------------------------------------------------------------------+\n")
 
     return 0
@@ -132,19 +147,19 @@ def main() -> int:
         "--hot-ops",
         type=int,
         default=1000,
-        help="Number of Hot NVMe 4 KB operations",
+        help="Number of Hot NVMe 4 KB operations (default: 1000)",
     )
     parser.add_argument(
         "--warm-mb",
         type=int,
         default=32,
-        help="Volume of Warm Block staging payload in MB",
+        help="Volume of Warm Block staging payload in MB (default: 32)",
     )
     parser.add_argument(
         "--cold-chunks",
         type=int,
         default=5,
-        help="Number of Cold S3 5 MB multipart chunks",
+        help="Number of Cold S3 5 MB multipart chunks (default: 5)",
     )
     args = parser.parse_args()
 

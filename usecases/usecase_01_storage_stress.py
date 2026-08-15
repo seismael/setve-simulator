@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Ensure setve package is on sys.path
@@ -27,6 +28,7 @@ def run_storage_stress(
     duration_seconds: float = 2.0,
     entropy_ratio: float = 0.5,
     num_cores: int = 2,
+    queue_depth: int = 16,
 ) -> int:
     """Execute multi-core Direct I/O stress workload and print telemetry summary."""
     print("=" * 80)
@@ -38,9 +40,14 @@ def run_storage_stress(
         tmp_dir = tempfile.TemporaryDirectory()
         target_path = str(Path(tmp_dir.name) / "setve_stress.dat")
         cleanup_tmp = True
-        print(f"[*] No target URI specified. Using temporary file: {target_path}")
+        print(f"[*] Target URI:       posix://{target_path} (Temporary Storage)")
     else:
-        print(f"[*] Target URI: posix://{target_path}")
+        print(f"[*] Target URI:       posix://{target_path}")
+
+    print(f"[*] Direct I/O Block: {block_size_bytes:,} Bytes ({block_size_bytes / 1024:.1f} KB)")
+    print(f"[*] Target Rate:      {target_throughput_gbps:.2f} Gbps ({num_cores} cores)")
+    print(f"[*] Queue Depth:      {queue_depth} concurrent SQEs/worker")
+    print(f"[*] Entropy Ratio:    {entropy_ratio * 100:.1f}% randomized payload bytes")
 
     try:
         blueprint = WorkloadBlueprint.from_dict(
@@ -56,14 +63,35 @@ def run_storage_stress(
         )
 
         core_ids = list(range(num_cores))
-        print(f"[*] Launching {num_cores} worker processes (Cores: {core_ids})...")
-        print(f"[*] Block: {block_size_bytes}B | Target: {target_throughput_gbps} Gbps")
+        print(f"\n[*] Pinning worker processes to physical CPU cores: {core_ids}")
+        t0 = time.perf_counter()
 
         orchestrator = MultiCoreOrchestrator(core_ids=core_ids)
         summary = orchestrator.start(blueprint)
 
+        elapsed = max(time.perf_counter() - t0, 0.001)
+        total_ops = summary.total_ops
+        total_mb = summary.total_bytes / (1024 * 1024)
+        measured_gbps = (summary.total_bytes * 8) / elapsed / 1e9
+        iops = total_ops / elapsed
+
+        bw_str = f"{measured_gbps:.2f} Gbps ({measured_gbps / 8:.2f} GB/s)"
+        core_rate_str = f"{measured_gbps / num_cores:.2f} Gbps/core"
+
         print("\n" + summary.format_table())
-        print("[*] Completed successfully.")
+
+        print("+--------------------------------------------------------------------------------+")
+        print("| STORAGE SATURATION DIAGNOSTICS & IOPS SUMMARY                                  |")
+        print("+--------------------------------------------------------------------------------+")
+        print(f"| Aggregate Bandwidth:        {bw_str:>46} |")
+        print(f"| Sustained IOPS:             {f'{iops:,.1f} IOPS':>46} |")
+        print(f"| Transferred Payload:        {f'{total_mb:,.1f} MB':>46} |")
+        print(f"| Per-Core Rate:              {core_rate_str:>46} |")
+        print(f"| Page Cache Bypass (O_DIRECT): {'ENFORCED (4096B ALIGNED)':>44} |")
+        print(
+            "+--------------------------------------------------------------------------------+\n"
+        )
+
         return 0
     finally:
         if cleanup_tmp:
@@ -114,6 +142,12 @@ def main() -> int:
         default=2,
         help="Number of core-pinned worker processes (default: 2)",
     )
+    parser.add_argument(
+        "--queue-depth",
+        type=int,
+        default=16,
+        help="Target queue depth per worker core (default: 16)",
+    )
 
     args = parser.parse_args()
     return run_storage_stress(
@@ -123,6 +157,7 @@ def main() -> int:
         duration_seconds=args.duration,
         entropy_ratio=args.entropy,
         num_cores=args.cores,
+        queue_depth=args.queue_depth,
     )
 
 

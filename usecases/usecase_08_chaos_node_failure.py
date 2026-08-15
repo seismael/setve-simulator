@@ -37,8 +37,7 @@ def run_chaos_simulation(
 
     print(f"[*] Initial Cluster Topology:   {initial_nodes} nodes | {initial_total_cores} cores")
     print(
-        f"[*] Total Target Address Space:  {total_target_size_gb} GB "
-        f"({total_target_bytes:,} bytes)"
+        f"[*] Total Target Address Space:  {total_target_size_gb} GB ({total_target_bytes:,} bytes)"
     )
     fail_pct = (failed_nodes / initial_nodes) * 100
     print(
@@ -85,24 +84,40 @@ def run_chaos_simulation(
         f"in {t_rebalance_us:.2f} us"
     )
 
-    # Step 4: Validate Address Space Integrity
+    # Step 4: Chaos Recovery - Simulated Node Rejoin
+    print(f"\n[+] CHAOS RECOVERY: Nodes {evicted} healed and re-joining cluster...")
+    t0_recovery = time.perf_counter_ns()
+    healed_shards_map = DeterministicShardGenerator.generate_cluster_shards(
+        global_seed=42,
+        nodes=initial_node_specs,
+        target_total_throughput_bps=total_target_bytes,
+        block_size=1048576,
+    )
+    healed_shards = [s for node_shards in healed_shards_map.values() for s in node_shards]
+    t_recovery_us = (time.perf_counter_ns() - t0_recovery) / 1000
+
+    print(f"[+] Cluster Restored:            {len(healed_shards)} shards in {t_recovery_us:.2f} us")
+
+    # Step 5: Validate Address Space Integrity
     base_offsets = [s.base_offset_bytes for s in rebalanced_shards]
     unique_offsets = len(set(base_offsets)) == len(rebalanced_shards)
-    integrity_status = "PASS (100% CONTIGUOUS)" if unique_offsets else "FAIL"
+    healed_offsets = [s.base_offset_bytes for s in healed_shards]
+    unique_healed = len(set(healed_offsets)) == len(healed_shards)
+    integrity_pass = unique_offsets and unique_healed
+    integrity_status = "PASS (100% CONTIGUOUS)" if integrity_pass else "FAIL"
 
     print("\n+--------------------------------------------------------------------------------+")
-    print("| DISTRIBUTED CHAOS REBALANCING SUMMARY                                          |")
+    print("| DISTRIBUTED CHAOS REBALANCING & RECOVERY SUMMARY                               |")
     print("+--------------------------------------------------------------------------------+")
     print(f"| Initial Cluster Capacity:   {initial_total_cores:>18} cores                        |")
-    print(f"| Surviving Capacity:         {surviving_total_cores:>18} cores                      |")
-    print(f"| Shard Rebalance Latency:    {t_rebalance_us:>18.2f} us                           |")
-    print(f"| Surviving Core Shards:      {len(rebalanced_shards):>18} shards                    |")
+    print(f"| Degraded Capacity:          {surviving_total_cores:>18} cores                      |")
+    print(f"| Restored Cluster Capacity:  {initial_total_cores:>18} cores                        |")
+    print(f"| Eviction Rebalance Latency: {t_rebalance_us:>18.2f} us                           |")
+    print(f"| Recovery Rebalance Latency: {t_recovery_us:>18.2f} us                           |")
     print(f"| Shard Boundary Integrity:   {integrity_status:>24}                   |")
-
     print("+--------------------------------------------------------------------------------+\n")
 
-    return 0 if integrity_status.startswith("PASS") else 1
-
+    return 0 if integrity_pass else 1
 
 
 def main() -> int:
@@ -114,25 +129,25 @@ def main() -> int:
         "--nodes",
         type=int,
         default=16,
-        help="Initial number of distributed generator nodes",
+        help="Initial number of distributed generator nodes (default: 16)",
     )
     parser.add_argument(
         "--cores-per-node",
         type=int,
         default=8,
-        help="Physical CPU cores per node",
+        help="Physical CPU cores per node (default: 8)",
     )
     parser.add_argument(
         "--failed-nodes",
         type=int,
         default=4,
-        help="Number of failed/evicted nodes to simulate",
+        help="Number of failed/evicted nodes to simulate (default: 4)",
     )
     parser.add_argument(
         "--target-gb",
         type=int,
         default=512,
-        help="Total target dataset size in GB",
+        help="Total target dataset size in GB (default: 512)",
     )
     args = parser.parse_args()
 

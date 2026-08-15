@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from usecases.usecase_01_storage_stress import run_storage_stress
@@ -47,6 +49,24 @@ def test_usecase_03_prometheus_monitoring() -> None:
     assert status == 0
 
 
+def test_usecase_03_prometheus_file_exports() -> None:
+    """Verify Use Case 03 exports .prom and .json files to disk."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        prom_out = str(Path(tmp_dir) / "test_metrics.prom")
+        json_out = str(Path(tmp_dir) / "test_telemetry.json")
+        status = run_prometheus_monitoring(
+            duration_seconds=0.2,
+            target_throughput_gbps=1.0,
+            output_prom=prom_out,
+            output_json=json_out,
+        )
+        assert status == 0
+        assert Path(prom_out).exists()
+        assert Path(json_out).exists()
+
+
 def test_usecase_04_ebpf_triangulation_pass() -> None:
     """Verify Use Case 04 passes when metric drift is zero."""
     status = run_ebpf_triangulation(
@@ -72,6 +92,7 @@ async def test_usecase_05_ai_vector_s3() -> None:
     """Verify Use Case 05 executes vector and S3 ingestion passes."""
     status = await run_ai_vector_s3_simulation(
         vector_ops=50,
+        vector_queries=20,
         s3_chunks=5,
     )
     assert status == 0
@@ -94,6 +115,7 @@ async def test_usecase_07_multitenant_qos_noisy_neighbor() -> None:
     status = await run_multitenant_qos_simulation(
         tenant_a_ops=50,
         tenant_b_mb=4,
+        sla_threshold_ms=10.0,
     )
     assert status == 0
 

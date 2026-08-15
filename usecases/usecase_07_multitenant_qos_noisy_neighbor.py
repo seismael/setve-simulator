@@ -60,11 +60,11 @@ async def run_tenant_b_noisy_neighbor(
         collector.record_bytes(w)
 
 
-
 async def run_multitenant_qos_simulation(
     tenant_a_ops: int = 1500,
     tenant_b_mb: int = 64,
     target_uri: str = "posix:///tmp/qos_sim_target.dat",
+    sla_threshold_ms: float = 2.0,
 ) -> int:
     """Execute multi-tenant QoS contention benchmark."""
     print("=" * 80)
@@ -88,8 +88,7 @@ async def run_multitenant_qos_simulation(
 
     # Step 2: Contended Execution (Tenant A + Tenant B Concurrent)
     print(
-        f"[*] Running Tenant A + Noisy Neighbor Tenant B concurrently "
-        f"({tenant_b_mb} MB batch)..."
+        f"[*] Running Tenant A + Noisy Neighbor Tenant B concurrently ({tenant_b_mb} MB batch)..."
     )
     t0_concurrent = time.perf_counter_ns()
     await asyncio.gather(
@@ -103,7 +102,8 @@ async def run_multitenant_qos_simulation(
     tenant_b_gbps = (collector_b.total_bytes * 8) / concurrent_duration / 1e9
 
     jitter_ratio = contended_p99 / max(baseline_p99, 0.001)
-    qos_status = "PASS (SLA MET)" if contended_p99 <= 2.0 else "FAIL (QoS VIOLATION)"
+    is_sla_met = contended_p99 <= sla_threshold_ms
+    qos_status = f"PASS (p99 <= {sla_threshold_ms:.1f}ms)" if is_sla_met else "FAIL (QoS VIOLATION)"
 
     print("\n+--------------------------------------------------------------------------------+")
     print("| MULTI-TENANT QUALITY OF SERVICE (QoS) AUDIT                                    |")
@@ -113,7 +113,7 @@ async def run_multitenant_qos_simulation(
     print(f"| Tenant A Contended (p99):      {contended_p99:>16.3f} ms                           |")
     print(f"| Contention Jitter Inflation:   {jitter_ratio:>16.2f}x                            |")
     print(f"| Tenant B Consumed Bandwidth:   {tenant_b_gbps:>16.2f} Gbps                         |")
-    print(f"| Tenant A QoS SLA Verification: {qos_status:>24}        |")
+    print(f"| Tenant A QoS SLA Status:       {qos_status:>26}        |")
     print("+--------------------------------------------------------------------------------+\n")
 
     return 0
@@ -128,19 +128,25 @@ def main() -> int:
         "--tenant-a-ops",
         type=int,
         default=1000,
-        help="Number of latency-sensitive OLTP operations",
+        help="Number of latency-sensitive OLTP operations (default: 1000)",
     )
     parser.add_argument(
         "--tenant-b-mb",
         type=int,
         default=32,
-        help="Volume of noisy-neighbor batch payload in MB",
+        help="Volume of noisy-neighbor batch payload in MB (default: 32)",
+    )
+    parser.add_argument(
+        "--sla-ms",
+        type=float,
+        default=2.0,
+        help="Target tail latency SLA limit for Tenant A in ms (default: 2.0)",
     )
     parser.add_argument(
         "--target-uri",
         type=str,
         default="posix:///tmp/qos_sim_target.dat",
-        help="Target storage URI",
+        help="Target storage URI (default: posix:///tmp/qos_sim_target.dat)",
     )
     args = parser.parse_args()
 
@@ -149,6 +155,7 @@ def main() -> int:
             tenant_a_ops=args.tenant_a_ops,
             tenant_b_mb=args.tenant_b_mb,
             target_uri=args.target_uri,
+            sla_threshold_ms=args.sla_ms,
         )
     )
 

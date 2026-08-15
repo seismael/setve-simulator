@@ -80,7 +80,6 @@ async def run_ai_kv_cache_simulation(
         decode_collector.record_latency(elapsed)
         decode_collector.record_bytes(w)
 
-
     decode_duration = max((time.perf_counter_ns() - t0_decode) / 1e9, 1e-9)
     tokens_per_sec = decode_tokens / decode_duration
     decode_p50 = decode_collector.percentile_ms(0.50)
@@ -90,7 +89,6 @@ async def run_ai_kv_cache_simulation(
         f"[+] Decode Complete: {tokens_per_sec:.1f} tokens/s | "
         f"p50={decode_p50:.3f}ms | p99={decode_p99:.3f}ms"
     )
-
 
     # 3. Checkpointing Phase (Bulk Weights Dump)
     print(f"\n[Phase 3: Checkpoint] Flushing {checkpoint_mb} MB model weights to storage...")
@@ -108,16 +106,21 @@ async def run_ai_kv_cache_simulation(
     ckpt_rate_gbps = (checkpoint_mb * 1024 * 1024 * 8) / ckpt_duration / 1e9
     print(f"[+] Checkpoint Complete: {ckpt_rate_gbps:.2f} Gbps in {ckpt_duration:.2f} s")
 
+    ttft_ms = prefill_ms
+    itl_p50_ms = decode_p50
+    itl_p99_ms = decode_p99
+
     # Summary Report
     print("\n+--------------------------------------------------------------------------------+")
-    print("| AI LLM WORKLOAD SIMULATION SUMMARY                                             |")
+    print("| AI LLM INFERENCE & TRAINING STORAGE SUMMARY                                    |")
     print("+--------------------------------------------------------------------------------+")
     print(f"| Prefill Ingest Rate:        {prefill_gbps:>16.2f} Gbps                            |")
-    print(f"| Decode Throughput:          {tokens_per_sec:>16.1f} tokens/s                      |")
-    print(f"| Decode Latency (p50):       {decode_p50:>16.3f} ms                            |")
-    print(f"| Decode Latency (p90):       {decode_p90:>16.3f} ms                            |")
-    print(f"| Decode Latency (p99):       {decode_p99:>16.3f} ms                            |")
-    print(f"| Checkpoint Flush Rate:      {ckpt_rate_gbps:>16.2f} Gbps                           |")
+    print(f"| Time-To-First-Token (TTFT): {ttft_ms:>16.2f} ms                              |")
+    print(f"| Decode Token Generation:    {tokens_per_sec:>16.1f} tokens/s                      |")
+    print(f"| Inter-Token Latency (p50):  {itl_p50_ms:>16.3f} ms                            |")
+    print(f"| Inter-Token Latency (p90):  {decode_p90:>16.3f} ms                            |")
+    print(f"| Inter-Token Latency (p99):  {itl_p99_ms:>16.3f} ms                            |")
+    print(f"| Checkpoint Flush Bandwidth: {ckpt_rate_gbps:>16.2f} Gbps                           |")
     print("+--------------------------------------------------------------------------------+\n")
 
     return 0
@@ -132,25 +135,25 @@ def main() -> int:
         "--prefill-mb",
         type=int,
         default=64,
-        help="Volume of prefill context data to ingest in MB",
+        help="Volume of prefill context data to ingest in MB (default: 64)",
     )
     parser.add_argument(
         "--tokens",
         type=int,
         default=1000,
-        help="Number of decode token generation iterations",
+        help="Number of decode token generation iterations (default: 1000)",
     )
     parser.add_argument(
         "--checkpoint-mb",
         type=int,
         default=128,
-        help="Volume of model checkpoint weights to flush in MB",
+        help="Volume of model checkpoint weights to flush in MB (default: 128)",
     )
     parser.add_argument(
         "--target-uri",
         type=str,
         default="posix:///tmp/ai_sim_target.dat",
-        help="Target storage URI",
+        help="Target storage URI (default: posix:///tmp/ai_sim_target.dat)",
     )
     args = parser.parse_args()
 

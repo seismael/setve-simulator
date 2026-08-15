@@ -23,6 +23,8 @@ from setve.payload.blueprint import WorkloadBlueprint  # noqa: E402
 def run_prometheus_monitoring(
     duration_seconds: float = 1.0,
     target_throughput_gbps: float = 5.0,
+    output_prom: str | None = None,
+    output_json: str | None = None,
 ) -> int:
     """Run workload and export Prometheus and JSON metrics."""
     print("=" * 80)
@@ -50,13 +52,23 @@ def run_prometheus_monitoring(
         print("\n--- 1. ASCII DIAGNOSTIC REPORT ---")
         print(summary.format_table())
 
+        prom_text = summary.to_prometheus_metrics()
         print("\n--- 2. PROMETHEUS METRIC EXPOSITION (/metrics) ---")
-        print(summary.to_prometheus_metrics())
+        print(prom_text)
 
+        json_text = summary.to_json()
         print("--- 3. STRUCTURED JSON TELEMETRY (ClickHouse / Elasticsearch) ---")
-        print(summary.to_json())
+        print(json_text)
 
-    print("[*] Telemetry exposition verified successfully.\n")
+        if output_prom:
+            Path(output_prom).write_text(prom_text, encoding="utf-8")
+            print(f"[+] Exported Prometheus metrics to: {output_prom}")
+
+        if output_json:
+            Path(output_json).write_text(json_text, encoding="utf-8")
+            print(f"[+] Exported JSON telemetry to:       {output_json}")
+
+    print("\n[*] Telemetry exposition verified successfully.\n")
     return 0
 
 
@@ -77,11 +89,25 @@ def main() -> int:
         default=5.0,
         help="Target throughput in Gbps (default: 5.0)",
     )
+    parser.add_argument(
+        "--output-prom",
+        type=str,
+        default=None,
+        help="Optional path to write Prometheus metrics file (.prom)",
+    )
+    parser.add_argument(
+        "--output-json",
+        type=str,
+        default=None,
+        help="Optional path to write structured JSON telemetry file (.json)",
+    )
 
     args = parser.parse_args()
     return run_prometheus_monitoring(
         duration_seconds=args.duration,
         target_throughput_gbps=args.throughput,
+        output_prom=args.output_prom,
+        output_json=args.output_json,
     )
 
 

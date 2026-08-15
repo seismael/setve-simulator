@@ -24,6 +24,7 @@ def run_ebpf_triangulation(
     simulated_transfer_mb: int = 1024,
     skew_drift_bytes: int = 0,
     tolerance_percent: float = 0.1,
+    interface_name: str = "eth0",
 ) -> int:
     """Evaluate telemetry skew between client and kernel counters."""
     print("=" * 80)
@@ -33,12 +34,13 @@ def run_ebpf_triangulation(
     client_bytes = simulated_transfer_mb * 1024 * 1024
     probe_bytes = client_bytes + skew_drift_bytes
 
-    print(f"[*] Simulated Transfer: {simulated_transfer_mb} MB ({client_bytes:,} bytes)")
-    print(f"[*] Skew Drift Injected: {skew_drift_bytes} bytes")
-    print(f"[*] Permitted SLA Tolerance: <= {tolerance_percent}%\n")
+    print(f"[*] Target Interface:       {interface_name}")
+    print(f"[*] Client Reported Size:   {simulated_transfer_mb:,} MB ({client_bytes:,} bytes)")
+    print(f"[*] Skew Drift Injected:    {skew_drift_bytes:,} bytes")
+    print(f"[*] SLA Permitted Tolerance: <= {tolerance_percent}%\n")
 
-    probe = EBPFProbe(interface="eth0")
-    probe.record_activity(tx_bytes=probe_bytes, rx_bytes=0, tx_pkts=probe_bytes // 1500)
+    probe = EBPFProbe(interface=interface_name)
+    probe.record_activity(tx_bytes=probe_bytes, rx_bytes=0, tx_pkts=max(1, probe_bytes // 1500))
 
     evaluator = TelemetryEvaluator(skew_threshold_percent=tolerance_percent)
     divergence = evaluator.evaluate(
@@ -46,25 +48,39 @@ def run_ebpf_triangulation(
         probe_bytes=probe.sample_bytes_transferred(),
     )
 
-    status_str = "VALID (PASS)" if divergence.is_valid else "FAIL (SKEW DETECTED)"
+    status_str = "VALID (PASS <= 0.1% SLA)" if divergence.is_valid else "FAIL (SKEW DETECTED)"
     print("+--------------------------------------------------------------------------------+")
     print("| TELEMETRY TRIANGULATION EVALUATION RESULT                                      |")
     print("+--------------------------------------------------------------------------------+")
     print(
-        f"| Client Reported Data:  {divergence.client_bytes:>18,} bytes "
-        f"({divergence.client_bytes / 1e9:.3f} GB)          |"
+        f"| Client Reported Data:    {divergence.client_bytes:>16,} bytes "
+        f"({divergence.client_bytes / 1e9:.3f} GB)            |"
     )
     print(
-        f"| eBPF Probe Counter:    {divergence.probe_bytes:>18,} bytes "
-        f"({divergence.probe_bytes / 1e9:.3f} GB)          |"
+        f"| eBPF Hardware Counter:   {divergence.probe_bytes:>16,} bytes "
+        f"({divergence.probe_bytes / 1e9:.3f} GB)            |"
     )
     delta_str = f"{divergence.delta_bytes:,} bytes"
-    print(f"| Delta Discrepancy:     {delta_str:>18}                               |")
+    print(f"| Delta Discrepancy:       {delta_str:>16}                                 |")
     skew_str = f"{divergence.divergence_percent:.4f}%"
-    print(f"| Measured Skew:         {skew_str:>18}                                |")
-    print(f"| Telemetry SLA Status:  {status_str:>18}                                |")
-    print("+--------------------------------------------------------------------------------+\n")
+    print(f"| Measured Metric Skew:    {skew_str:>16}                                 |")
+    print(f"| Triangulation Status:    {status_str:>26}                      |")
+    print("+--------------------------------------------------------------------------------+")
 
+    if not divergence.is_valid:
+        print("\n[!] DIAGNOSTIC ADVISORY: Telemetry divergence exceeds threshold!")
+        if divergence.delta_bytes > 0:
+            print("    -> Hardware probe observed MORE bytes than client reported.")
+            print("    -> Possible Root Cause: Kernel TCP retransmissions, uncounted TLS/protocol")
+            print("       header overhead, or unmonitored concurrent background tenant traffic.")
+        else:
+            print("    -> Hardware probe observed FEWER bytes than client reported.")
+            print("    -> Possible Root Cause: Client socket write buffer inflation, un-flushed")
+            print("       send queues, or silent packet drops before physical NIC egress.")
+    else:
+        print("\n[+] Telemetry integrity verified: Zero unaccounted packet drops or metric drift.")
+
+    print()
     return 0 if divergence.is_valid else 1
 
 
@@ -89,12 +105,19 @@ def main() -> int:
         default=0.1,
         help="Max allowable divergence percent (default: 0.1)",
     )
+    parser.add_argument(
+        "--interface",
+        type=str,
+        default="eth0",
+        help="Hardware network/storage interface name (default: eth0)",
+    )
 
     args = parser.parse_args()
     return run_ebpf_triangulation(
         simulated_transfer_mb=args.transfer_mb,
         skew_drift_bytes=args.drift_bytes,
         tolerance_percent=args.tolerance,
+        interface_name=args.interface,
     )
 
 
