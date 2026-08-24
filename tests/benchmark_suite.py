@@ -1,4 +1,4 @@
-"""Comprehensive Multi-Subsystem Performance Benchmark Suite for SETVE.
+"""Comprehensive Multi-Subsystem Performance Benchmark Suite for STEVE.
 
 Benchmarks all layers:
   1. Memory subsystem (DirectBuffer 4096/64 alignment, BufferPool acquire latency)
@@ -17,16 +17,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from setve.adapters.base import DirectBuffer, TargetDescriptor
-from setve.adapters.io_uring import IoUringTargetAdapter
-from setve.adapters.posix import PosixDirectIOAdapter
-from setve.adapters.s3 import S3TargetAdapter
-from setve.adapters.vector import VectorTargetAdapter
-from setve.orchestrator.cluster import DeterministicShardGenerator
-from setve.payload.buffer_pool import BufferPool
-from setve.payload.mutator import PySIMDPayloadMutator
-from setve.validation.evaluator import TelemetryEvaluator
-from setve.validation.metric_collector import MetricCollector
+from steve.adapters.base import DirectBuffer, TargetDescriptor
+from steve.adapters.io_uring import IoUringTargetAdapter
+from steve.adapters.posix import PosixDirectIOAdapter
+from steve.adapters.s3 import S3TargetAdapter
+from steve.adapters.vector import VectorTargetAdapter
+from steve.orchestrator.cluster import DeterministicShardGenerator
+from steve.payload.buffer_pool import BufferPool
+from steve.payload.mutator import PySIMDPayloadMutator
+from steve.validation.evaluator import TelemetryEvaluator
+from steve.validation.metric_collector import MetricCollector
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,8 +42,8 @@ class BenchmarkResult:
     status: str
 
 
-class SETVEBenchmarkSuite:
-    """Master benchmark suite runner for all SETVE engines and adapters."""
+class STEVEBenchmarkSuite:
+    """Master benchmark suite runner for all STEVE engines and adapters."""
 
     def __init__(self) -> None:
         self.results: list[BenchmarkResult] = []
@@ -51,7 +51,7 @@ class SETVEBenchmarkSuite:
     def run_all(self) -> list[BenchmarkResult]:
         """Execute all subsystem benchmarks sequentially."""
         print("=" * 88)
-        print("  SETVE PERFORMANCE & OBSERVABILITY BENCHMARK SUITE")
+        print("  STEVE PERFORMANCE & OBSERVABILITY BENCHMARK SUITE")
         print("=" * 88)
 
         self.benchmark_memory_subsystem()
@@ -384,7 +384,7 @@ class SETVEBenchmarkSuite:
         border = "=" * 96
         divider = "-" * 96
         print(f"\n+{border}+")
-        print(f"| {'SETVE SUBSYSTEM BENCHMARK PERFORMANCE & OBSERVABILITY MATRIX':<94} |")
+        print(f"| {'STEVE SUBSYSTEM BENCHMARK PERFORMANCE & OBSERVABILITY MATRIX':<94} |")
         print(f"+{border}+")
         print(
             f"| {'Category':<14} | {'Benchmark Name':<34} | {'Throughput / Rate':<22} "
@@ -402,7 +402,7 @@ class SETVEBenchmarkSuite:
 
 
 def main() -> None:
-    suite = SETVEBenchmarkSuite()
+    suite = STEVEBenchmarkSuite()
     suite.run_all()
 
 

@@ -1,6 +1,6 @@
 """Tests for MetricCollector HDR Histogram aggregation and throughput metrics."""
 
-from setve.validation.metric_collector import MetricCollector
+from steve.validation.metric_collector import MetricCollector
 
 
 def test_metric_collector_empty_state() -> None:

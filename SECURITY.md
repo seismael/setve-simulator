@@ -12,7 +12,7 @@
 
 ## Privileged Operations & Isolation Boundaries
 
-SETVE is engineered for raw, high-throughput data-plane generation and utilizes low-level operating system primitives:
+STEVE is engineered for raw, high-throughput data-plane generation and utilizes low-level operating system primitives:
 
 1. **Direct I/O (`O_DIRECT`):** Requires physical block alignment and may require write access to raw block devices (e.g. `/dev/nvme0n1`). Ensure target paths do not overlap with operating system root or boot partitions.
 2. **CPU Affinity Pinning (`os.sched_setaffinity`):** Modifies CPU core masks for worker processes. On Linux, this requires standard process permissions or container `cpuset` delegations.
@@ -22,7 +22,7 @@ SETVE is engineered for raw, high-throughput data-plane generation and utilizes 
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within SETVE:
+If you discover a security vulnerability within STEVE:
 
 1. **Do NOT open a public issue.**
 2. Report the vulnerability privately via GitHub Security Advisories or by emailing the architecture security team.

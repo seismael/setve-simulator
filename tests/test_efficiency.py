@@ -8,11 +8,11 @@ import tracemalloc
 
 import pytest
 
-from setve.adapters.base import TargetDescriptor
-from setve.adapters.posix import PosixDirectIOAdapter
-from setve.payload.buffer_pool import BufferPool
-from setve.payload.mutator import PySIMDPayloadMutator
-from setve.validation.metric_collector import MetricCollector
+from steve.adapters.base import TargetDescriptor
+from steve.adapters.posix import PosixDirectIOAdapter
+from steve.payload.buffer_pool import BufferPool
+from steve.payload.mutator import PySIMDPayloadMutator
+from steve.validation.metric_collector import MetricCollector
 
 
 def test_mutator_zero_allocation_hot_path() -> None:
@@ -113,7 +113,7 @@ async def test_posix_adapter_zero_copy_readinto() -> None:
             ]
             total_posix_bytes = sum(s.size_diff for s in posix_allocs)
             assert total_posix_bytes <= 32, f"Excessive allocations in posix read: {posix_allocs}"
-            assert read_buf.view[:12] == b"HELLO_VECTOR"
+            assert bytes(read_buf.view[:12]) == b"HELLO_VECTOR"
         finally:
             adapter.close()
             pool.close()

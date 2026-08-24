@@ -2,7 +2,7 @@
 
 ## Overview & Architecture Framework
 
-To maintain strict human engineering rigor while maximizing RAG retrieval precision and eliminating hallucinations for AI coding agents, SETVE synthesizes four industry documentation frameworks: **Arc42** (architectural structure), the **C4 Model** (hierarchical abstraction), **Diátaxis** (functional documentation types), and **IEEE 42010** (stakeholder view segregation), augmented with an **Agent-Native RAG Indexing Layer**.
+To maintain strict human engineering rigor while maximizing RAG retrieval precision and eliminating hallucinations for AI coding agents, STEVE synthesizes four industry documentation frameworks: **Arc42** (architectural structure), the **C4 Model** (hierarchical abstraction), **Diátaxis** (functional documentation types), and **IEEE 42010** (stakeholder view segregation), augmented with an **Agent-Native RAG Indexing Layer**.
 
 This synthesis is known as the **Docs-as-Context (ContextOps)** framework. It represents the state of the art in agent-native software architecture, balancing engineering rigor with optimal Large Language Model (LLM) token efficiency to prevent context pollution and architectural drift.
 
@@ -73,8 +73,8 @@ traceability:
   parent_hld: null
   child_llds: ["LLD-SIMD-001", "LLD-RING-002"]
 code_references:
-  - "setve/payload/mutator.py"
-  - "setve/payload/buffer_pool.py"
+  - "steve/payload/mutator.py"
+  - "steve/payload/buffer_pool.py"
 test_references:
   - "tests/test_mutator.py"
 owner: "@architecture-team"
@@ -183,7 +183,7 @@ High-throughput storage simulation in Python suffers from kernel context-switchi
 # LLD-[LAYER]-[INDEX]: [Specific Module / Subsystem Name]
 
 ## 1. Concrete Module & Class Architecture (C4 Level 3 & 4)
-* **Target Package:** `setve.payload.mutator`
+* **Target Package:** `steve.payload.mutator`
 * **Interface Specification:**
   * Input: `DirectBuffer` (Must satisfy `address % 4096 == 0`)
   * Execution: AVX-512 register streaming via C-extension/NumPy bindings.
@@ -220,11 +220,11 @@ To ensure deterministic navigation for developers and AI agents, every requireme
 $$\text{BRD (Requirement)} \longrightarrow \text{HLD (Architecture)} \longrightarrow \text{ADR (Decision)} \longrightarrow \text{LLD (Implementation)} \longrightarrow \text{Code / Unit Test}$$
 
 ```text
-                                 [ BRD-SETVE-001 ]        [ BRD-DIST-001 ]
+                                 [ BRD-STEVE-001 ]        [ BRD-DIST-001 ]
                                          │                       │
                        ┌─────────────────┴───────────────────────┴─────────────────┐
                        ▼                                                           ▼
-                [ HLD-SETVE-001 ]                                           [ HLD-DIST-001 ]
+                [ HLD-STEVE-001 ]                                           [ HLD-DIST-001 ]
                        │                                                           │
           ┌────────────┼────────────┐                                 ┌────────────┴────────────┐
           ▼            ▼            ▼                                 ▼                         ▼

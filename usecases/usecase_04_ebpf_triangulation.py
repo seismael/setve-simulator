@@ -11,13 +11,13 @@ import argparse
 import sys
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.validation.ebpf_probe import EBPFProbe  # noqa: E402
-from setve.validation.evaluator import TelemetryEvaluator  # noqa: E402
+from steve.validation.ebpf_probe import EBPFProbe  # noqa: E402
+from steve.validation.evaluator import TelemetryEvaluator  # noqa: E402
 
 
 def run_ebpf_triangulation(
@@ -29,7 +29,7 @@ def run_ebpf_triangulation(
 ) -> int:
     """Evaluate telemetry skew between client and kernel counters."""
     print("=" * 80)
-    print("  SETVE USE CASE 04: eBPF Ground-Truth Telemetry Triangulation")
+    print("  STEVE USE CASE 04: eBPF Ground-Truth Telemetry Triangulation")
     print("=" * 80)
 
     client_bytes = simulated_transfer_mb * 1024 * 1024
@@ -101,7 +101,7 @@ def run_ebpf_triangulation(
 
 def main() -> int:
     """Parse CLI options and execute triangulation evaluation."""
-    parser = argparse.ArgumentParser(description="SETVE Use Case 04: eBPF Telemetry Triangulator")
+    parser = argparse.ArgumentParser(description="STEVE Use Case 04: eBPF Telemetry Triangulator")
     parser.add_argument(
         "--transfer-mb",
         type=int,

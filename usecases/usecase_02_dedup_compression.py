@@ -16,12 +16,12 @@ import zlib
 from collections import Counter
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
+from steve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
 
 
 def calculate_shannon_entropy(data: bytes) -> float:
@@ -54,7 +54,7 @@ def run_dedup_compression_bench(
 ) -> int:
     """Benchmark in-place SIMD payload mutation across multiple compression ratios."""
     print("=" * 80)
-    print("  SETVE USE CASE 02: Deduplication & Inline Compression Analysis")
+    print("  STEVE USE CASE 02: Deduplication & Inline Compression Analysis")
     print("=" * 80)
 
     buffer_size_bytes = buffer_size_mb * 1024 * 1024
@@ -89,7 +89,7 @@ def run_dedup_compression_bench(
             shannon_bits = calculate_shannon_entropy(sample_bytes)
             theory_savings_pct = max(0.0, (1.0 - (shannon_bits / 8.0)) * 100.0)
             zlib_savings_pct, _ = measure_empirical_compression(sample_bytes)
-            sample_buf = None  # Release view reference
+            del sample_buf  # Release view reference
 
             # Measure raw SIMD throughput
             t0 = time.perf_counter_ns()
@@ -141,7 +141,7 @@ def run_dedup_compression_bench(
 def main() -> int:
     """Parse CLI options and execute entropy benchmark."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 02: Deduplication & Compression Benchmarker"
+        description="STEVE Use Case 02: Deduplication & Compression Benchmarker"
     )
     parser.add_argument(
         "--buffer-size-mb",

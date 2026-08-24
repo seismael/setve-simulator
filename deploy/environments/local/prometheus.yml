@@ -3,8 +3,8 @@ global:
   evaluation_interval: 1s
 
 scrape_configs:
-  - job_name: 'setve-orchestrator'
+  - job_name: 'steve-orchestrator'
     static_configs:
-      - targets: ['setve-orchestrator:9100']
+      - targets: ['steve-orchestrator:9100']
     metrics_path: '/metrics'
     scrape_timeout: 900ms

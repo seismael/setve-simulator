@@ -8,14 +8,14 @@ layer: "compute-engine"
 c4_level: "container"
 diataxis_type: "explanation"
 traceability:
-  implements_brd: ["BRD-SETVE-001", "BRD-DIST-001"]
+  implements_brd: ["BRD-STEVE-001", "BRD-DIST-001"]
   governed_by_adr: ["ADR-0001", "ADR-0002"]
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: ["LLD-ORCH-001"]
 code_references:
-  - "setve/orchestrator/master.py"
-  - "setve/orchestrator/cluster.py"
-  - "setve/orchestrator/sync.py"
+  - "steve/orchestrator/master.py"
+  - "steve/orchestrator/cluster.py"
+  - "steve/orchestrator/sync.py"
 test_references:
   - "tests/test_master_telemetry.py"
 owner: "@architecture-team"
@@ -27,7 +27,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. System Context & C4 Architecture (Levels 1 & 2)
 
-HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-node load execution fleets across hundreds of physical servers. It extends `HLD-SETVE-001` from a single-host core-pinned execution model into a shared-nothing, linearly scalable ($\mathcal{O}(N)$) distributed system capable of generating multi-terabyte-per-second ($\text{TB/s}$) aggregate load without centralized lock bottlenecks.
+HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-node load execution fleets across hundreds of physical servers. It extends `HLD-STEVE-001` from a single-host core-pinned execution model into a shared-nothing, linearly scalable ($\mathcal{O}(N)$) distributed system capable of generating multi-terabyte-per-second ($\text{TB/s}$) aggregate load without centralized lock bottlenecks.
 
 
 ```text
@@ -36,7 +36,7 @@ HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-no
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                 │
 │                           ┌──────────────────────────────────────────┐                          │
-│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │      STEVE Master Orchestrator Node      │                          │
 │                           │   (Deterministic Sharding + gRPC Sync)   │                          │
 │                           └──────┬────────────────────────────┬──────┘                          │
 │                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
@@ -63,7 +63,7 @@ HLD-DIST-001 defines the scale-out architecture required to orchestrate multi-no
 ### 1.1 Architectural Subsystems
 
 1. **Global Master Orchestrator:** Manages cluster lifecycle, parses declarative YAML workload blueprints, calculates partition shard layouts, and enforces barrier synchronization phases via gRPC.
-2. **Local Node Daemon (`setve-node`):** A lightweight agent running on each compute host that discovers NUMA topology, manages local core pinning (`os.sched_setaffinity`), spawns worker container/process pools, and monitors host memory alignment constraints.
+2. **Local Node Daemon (`steve-node`):** A lightweight agent running on each compute host that discovers NUMA topology, manages local core pinning (`os.sched_setaffinity`), spawns worker container/process pools, and monitors host memory alignment constraints.
 3. **Shared-Nothing Worker Fleet:** Core-pinned Python processes operating in isolation. Workers maintain zero runtime communication with each other during active I/O execution, ensuring strict $\mathcal{O}(N)$ scaling linearity.
 4. **Out-of-Band Telemetry Sink:** Independent eBPF/XDP network and block layer probes on each node that export raw wire metrics directly to ClickHouse over dedicated management interfaces.
 
@@ -105,7 +105,7 @@ $$\text{Offset}(t) = \text{BaseOffset} + \left[ (t \times \text{Stride}) + (n \t
 
 ## 3. Two-Phase gRPC Barrier Synchronization Protocol
 
-To prevent test skew caused by worker startup initialization drift (e.g., memory allocations, DNS resolution, socket handshakes), SETVE enforces a **Two-Phase Barrier Synchronization Protocol** prior to triggering active load execution.
+To prevent test skew caused by worker startup initialization drift (e.g., memory allocations, DNS resolution, socket handshakes), STEVE enforces a **Two-Phase Barrier Synchronization Protocol** prior to triggering active load execution.
 
 
 ```text
@@ -159,12 +159,12 @@ If a node drops during Phase 2 (`RUNNING`), the run is flagged as degraded. The 
 
 ---
 
-## 5. gRPC Service Specifications (`setve/orchestrator/sync.proto`)
+## 5. gRPC Service Specifications (`steve/orchestrator/sync.proto`)
 
 ```protobuf
 syntax = "proto3";
 
-package setve.orchestrator;
+package steve.orchestrator;
 
 service ClusterOrchestrator {
   // Master -> Worker Node: Deploy workload blueprint

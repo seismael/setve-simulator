@@ -8,14 +8,14 @@ layer: "compute-engine"
 c4_level: "code"
 diataxis_type: "reference"
 traceability:
-  implements_brd: ["BRD-SETVE-001"]
+  implements_brd: ["BRD-STEVE-001"]
   governed_by_adr: ["ADR-0001"]
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: []
 code_references:
-  - "setve/payload/mutator.py"
-  - "setve/payload/buffer_pool.py"
-  - "setve/payload/blueprint.py"
+  - "steve/payload/mutator.py"
+  - "steve/payload/buffer_pool.py"
+  - "steve/payload/blueprint.py"
 test_references:
   - "tests/test_mutator.py"
   - "tests/test_buffer_pool.py"

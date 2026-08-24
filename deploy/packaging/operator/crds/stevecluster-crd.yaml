@@ -1,0 +1,59 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: steveclusters.steve.io
+spec:
+  group: steve.io
+  names:
+    kind: STEVECluster
+    listKind: STEVEClusterList
+    plural: steveclusters
+    singular: stevecluster
+    shortNames:
+      - stevec
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                nodeCount:
+                  type: integer
+                  minimum: 1
+                coresPerNode:
+                  type: integer
+                  minimum: 1
+                targetThroughputGbps:
+                  type: number
+                targetEndpoint:
+                  type: string
+                blockSizeBytes:
+                  type: integer
+                entropyRatio:
+                  type: number
+                workloadDurationSeconds:
+                  type: integer
+                scalingPolicy:
+                  type: object
+                  properties:
+                    minReplicas:
+                      type: integer
+                    maxReplicas:
+                      type: integer
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                activeWorkers:
+                  type: integer
+                currentThroughputGbps:
+                  type: number
+      subresources:
+        status: {}

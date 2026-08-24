@@ -1,4 +1,4 @@
-"""SETVE Use Case 07: Multi-Tenant Quality of Service (QoS) & Noisy Neighbor Contention.
+"""STEVE Use Case 07: Multi-Tenant Quality of Service (QoS) & Noisy Neighbor Contention.
 
 Simulates multi-tenant storage resource competition:
 1. Tenant A (Latency-Sensitive OLTP): High-priority 4 KB I/O with tail-latency SLA (p99 <= 2.0ms).
@@ -14,20 +14,20 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.adapters.base import TargetDescriptor  # noqa: E402
-from setve.adapters.factory import AdapterFactory  # noqa: E402
-from setve.payload.buffer_pool import BufferPool  # noqa: E402
-from setve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
-from setve.validation.metric_collector import MetricCollector  # noqa: E402
+from steve.adapters.base import TargetAdapter, TargetDescriptor  # noqa: E402
+from steve.adapters.factory import AdapterFactory  # noqa: E402
+from steve.payload.buffer_pool import BufferPool  # noqa: E402
+from steve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
+from steve.validation.metric_collector import MetricCollector  # noqa: E402
 
 
 async def run_tenant_a_oltp(
-    adapter: object,
+    adapter: TargetAdapter,
     target: TargetDescriptor,
     ops: int,
     collector: MetricCollector,
@@ -47,7 +47,7 @@ async def run_tenant_a_oltp(
 
 
 async def run_tenant_b_noisy_neighbor(
-    adapter: object,
+    adapter: TargetAdapter,
     target: TargetDescriptor,
     chunks: int,
     collector: MetricCollector,
@@ -77,7 +77,7 @@ async def run_multitenant_qos_simulation(
 ) -> int:
     """Execute multi-tenant QoS contention benchmark."""
     print("=" * 80)
-    print("  SETVE USE CASE 07: Multi-Tenant QoS & Noisy Neighbor Contention")
+    print("  STEVE USE CASE 07: Multi-Tenant QoS & Noisy Neighbor Contention")
     print("=" * 80)
 
     cleanup_tmp = False
@@ -184,7 +184,7 @@ async def run_multitenant_qos_simulation(
 def main() -> int:
     """Parse CLI options and run multi-tenant QoS simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 07: Multi-Tenant QoS & Resource Contention Simulation"
+        description="STEVE Use Case 07: Multi-Tenant QoS & Resource Contention Simulation"
     )
     parser.add_argument(
         "--tenant-a-ops",

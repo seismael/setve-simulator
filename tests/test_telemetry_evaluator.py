@@ -1,6 +1,6 @@
 """Tests for TelemetryEvaluator and divergence calculation."""
 
-from setve.validation.evaluator import TelemetryEvaluator
+from steve.validation.evaluator import TelemetryEvaluator
 
 
 def test_telemetry_evaluator_valid() -> None:

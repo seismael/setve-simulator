@@ -1,6 +1,6 @@
 """Tests for WorkloadBlueprint Domain Model."""
 
-from setve.payload.blueprint import WorkloadBlueprint
+from steve.payload.blueprint import WorkloadBlueprint
 
 
 def test_blueprint_parsing() -> None:

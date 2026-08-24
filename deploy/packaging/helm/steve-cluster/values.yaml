@@ -1,0 +1,63 @@
+# Production Helm Configuration for STEVE Cluster Deployment
+# Reference: HLD-K8S-001 & HLD-ENV-001
+
+global:
+  environment: production
+  clusterDomain: cluster.local
+
+master:
+  replicaCount: 1
+  image:
+    repository: steve/master
+    tag: v0.2.0
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 50051
+    metricsPort: 8123
+  resources:
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    readOnlyRootFilesystem: true
+
+worker:
+  image:
+    repository: steve/worker
+    tag: v0.2.0
+    pullPolicy: IfNotPresent
+  hostIPC: true
+  nodeSelector:
+    steve.io/performance-tier: "baremetal-gpu-storage"
+  tolerations:
+    - key: "performance"
+      operator: "Equal"
+      value: "dedicated"
+      effect: "NoSchedule"
+  resources:
+    limits:
+      cpu: "16"
+      memory: "32Gi"
+      hugepages-2Mi: "8Gi"
+    requests:
+      cpu: "16"
+      memory: "32Gi"
+      hugepages-2Mi: "8Gi"
+  securityContext:
+    privileged: true
+    capabilities:
+      add:
+        - SYS_ADMIN
+        - IPC_LOCK
+        - NET_ADMIN
+
+keda:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 32

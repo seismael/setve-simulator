@@ -8,18 +8,18 @@ layer: "compute-engine"
 c4_level: "code"
 diataxis_type: "reference"
 traceability:
-  implements_brd: ["BRD-SETVE-001", "BRD-DIST-001"]
+  implements_brd: ["BRD-STEVE-001", "BRD-DIST-001"]
   governed_by_adr: ["ADR-0001", "ADR-0002"]
   parent_hld: "HLD-DIST-001"
   child_llds: []
 code_references:
-  - "setve/orchestrator/master.py"
-  - "setve/orchestrator/worker.py"
-  - "setve/orchestrator/cluster.py"
-  - "setve/orchestrator/sync.py"
-  - "setve/orchestrator/affinity.py"
-  - "setve/validation/metric_collector.py"
-  - "setve/validation/reporter.py"
+  - "steve/orchestrator/master.py"
+  - "steve/orchestrator/worker.py"
+  - "steve/orchestrator/cluster.py"
+  - "steve/orchestrator/sync.py"
+  - "steve/orchestrator/affinity.py"
+  - "steve/validation/metric_collector.py"
+  - "steve/validation/reporter.py"
 test_references:
   - "tests/test_cluster_sync.py"
   - "tests/test_sharding.py"
@@ -42,7 +42,7 @@ last_validated_date: "2026-08-05"
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                 │
 │                           ┌──────────────────────────────────────────┐                          │
-│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │      STEVE Master Orchestrator Node      │                          │
 │                           │   (Deterministic Sharding + gRPC Sync)   │                          │
 │                           └──────┬────────────────────────────┬──────┘                          │
 │                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
@@ -154,7 +154,7 @@ class DeterministicShardGenerator:
 
 ---
 
-## 3. Barrier Synchronization Servicer (`setve/orchestrator/sync.py`)
+## 3. Barrier Synchronization Servicer (`steve/orchestrator/sync.py`)
 
 ```python
 """gRPC Servicer enforcing two-phase cluster barrier synchronization."""
@@ -162,13 +162,13 @@ class DeterministicShardGenerator:
 import asyncio
 import time
 from typing import Dict, Any
-from setve.orchestrator.sync_pb2 import (
+from steve.orchestrator.sync_pb2 import (
     BlueprintRequest,
     BlueprintResponse,
     ReadySignal,
     WaitResponse,
 )
-from setve.orchestrator.sync_pb2_grpc import ClusterOrchestratorServicer
+from steve.orchestrator.sync_pb2_grpc import ClusterOrchestratorServicer
 
 
 class ClusterSyncServicer(ClusterOrchestratorServicer):
@@ -195,15 +195,12 @@ class ClusterSyncServicer(ClusterOrchestratorServicer):
         # Await barrier release event
         await self._release_event.wait()
 
-        return WaitResponse(
-            release=True,
-            synchronized_start_us=self._synchronized_start_us
-        )
+        return WaitResponse(release=True, synchronized_start_us=self._synchronized_start_us)
 ```
 
 ---
 
-## 4. NUMA Topologies & Hardware Affinity Engine (`setve/orchestrator/affinity.py`)
+## 4. NUMA Topologies & Hardware Affinity Engine (`steve/orchestrator/affinity.py`)
 
 ### 4.1 Dual-Socket Hardware Architecture
 
@@ -237,7 +234,7 @@ class ClusterSyncServicer(ClusterOrchestratorServicer):
 
 ---
 
-## 5. Zero-Allocation Structured Async Logging (`setve/logging.py`)
+## 5. Zero-Allocation Structured Async Logging (`steve/logging.py`)
 
 ### 5.1 Hot-Path Decoupling Architecture
 
@@ -265,4 +262,3 @@ class ClusterSyncServicer(ClusterOrchestratorServicer):
 
 * **Zero Hot-Path Allocations:** Log-level gating ensures zero string interpolation overhead during active I/O loops.
 * **Context Inheritance:** Structured logs automatically bind `run_id`, `node_id`, `core_id`, and ISO-8601 nanosecond timestamps.
-

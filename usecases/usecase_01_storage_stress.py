@@ -12,13 +12,13 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
-from setve.payload.blueprint import WorkloadBlueprint  # noqa: E402
+from steve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
+from steve.payload.blueprint import WorkloadBlueprint  # noqa: E402
 
 
 def run_storage_stress(
@@ -33,14 +33,14 @@ def run_storage_stress(
 ) -> int:
     """Execute multi-core Direct I/O stress workload and print telemetry summary."""
     print("=" * 80)
-    print("  SETVE USE CASE 01: NVMe & Direct I/O Storage Saturation Engine")
+    print("  STEVE USE CASE 01: NVMe & Direct I/O Storage Saturation Engine")
     print("=" * 80)
 
     cleanup_tmp = False
     tmp_dir = None
     if not target_path:
         tmp_dir = tempfile.TemporaryDirectory()
-        target_path = str(Path(tmp_dir.name) / "setve_stress.dat")
+        target_path = str(Path(tmp_dir.name) / "steve_stress.dat")
         cleanup_tmp = True
         print(f"[*] Target URI:       posix://{target_path} (Temporary Storage)")
     else:
@@ -109,7 +109,7 @@ def run_storage_stress(
 def main() -> int:
     """Parse CLI options and execute stress workload."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 01: Storage Saturation Stress Tester"
+        description="STEVE Use Case 01: Storage Saturation Stress Tester"
     )
     parser.add_argument(
         "--target",

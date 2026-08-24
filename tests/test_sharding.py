@@ -1,6 +1,6 @@
 """Tests for DeterministicShardGenerator partitioning and seed calculation."""
 
-from setve.orchestrator.cluster import DeterministicShardGenerator
+from steve.orchestrator.cluster import DeterministicShardGenerator
 
 
 def test_deterministic_sharding_distribution() -> None:

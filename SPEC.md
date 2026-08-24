@@ -1,8 +1,8 @@
-# SPEC.md: Universal Simulation & Telemetry Validation Engine (SETVE) Technical Specification
+# SPEC.md: Storage, Telemetry, Engine, Verification, and Evaluation (STEVE) Technical Specification
 
 ## 1. System Vision & Architecture Topology
 
-The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-throughput, platform-agnostic load generation and out-of-band telemetry verification framework designed to stress-test high-performance storage and data-plane systems (saturating $\ge 8\text{ GB/s}$ per node up to multi-TB/s clusters).
+The **Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)** is a platform-agnostic, multi-gigabyte-per-second load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems (saturating $\ge 8\text{ GB/s}$ per node up to multi-TB/s clusters).
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -10,7 +10,7 @@ The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-thr
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ┌───────────────────────────┐                ┌────────────────────────────┐   │
-│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ STEVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
 │   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
 │   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
 │                 │                                            │                  │
@@ -27,7 +27,7 @@ The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-thr
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 SETVE 3-PLANE TOPOLOGY (C2)                              │
+│                                 STEVE 3-PLANE TOPOLOGY (C2)                              │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                          │
 │ 1. CONTROL PLANE (Master Orchestrator)                                                   │
@@ -79,29 +79,30 @@ The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-thr
 │     os.write(fd, buffer.view) / io_uring SQE -> Block Device Controller         │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 2. Subsystem Functional Specifications
 
-### 2.1 Orchestration Subsystem (`setve/orchestrator/`)
+### 2.1 Orchestration Subsystem (`steve/orchestrator/`)
 - **`master.py` (`MultiCoreOrchestrator`):** Process lifecycle manager. Spawns per-core workers, distributes target descriptors, monitors child process health, and coordinates graceful teardown via signal handling.
-- **`worker.py` (`_worker_process_main`):** Core-pinned worker process entrypoint. Installs `uvloop`, initializes target adapters, and executes non-blocking load generation loops.
+- **`worker.py` (`run_worker_process`):** Core-pinned worker process entrypoint. Installs `uvloop`, initializes target adapters, and executes non-blocking load generation loops.
 - **`affinity.py`:** Hardware topology inspector mapping NUMA domains and physical cores (`os.sched_setaffinity`) to eliminate thread migration overhead.
 
-### 2.2 Payload Subsystem (`setve/payload/`)
+### 2.2 Payload Subsystem (`steve/payload/`)
 - **`mutator.py` (`PySIMDPayloadMutator`):** In-place C/NumPy SIMD mutation engine altering payload entropy ($\alpha \in [0.0, 1.0]$) at line rate without re-allocation.
 - **`buffer_pool.py` (`BufferPool`):** Page-aligned anonymous `mmap` ring buffer allocator providing zero-copy `memoryview` slices to worker tasks.
 - **`profiles.py`:** Workload profile definitions (e.g., AI LLM prefill/decode sequences, high-rate video streams, small-block POSIX I/O).
 
-### 2.3 Target Adapters Subsystem (`setve/adapters/`)
+### 2.3 Target Adapters Subsystem (`steve/adapters/`)
 - **`base.py` (`TargetAdapter`, `DirectBuffer`, `TargetDescriptor`):** Standard abstract base class defining `read()`, `write()`, and `flush()` interfaces over aligned `DirectBuffer` objects.
 - **`posix.py` (`PosixDirectIOAdapter`):** Direct I/O (`O_DIRECT`) filesystem target driver enforcing sector alignment.
 - **`io_uring.py` (`IoUringTargetAdapter`):** Linux kernel-bypass driver using `liburing`. Prepares Submission Queue Entries (SQEs) and reaps Completion Queue Events (CQEs) without per-op system calls.
 - **`s3.py` (`S3TargetAdapter`):** Async HTTP multipart S3 object store adapter.
 - **`vector.py` (`VectorTargetAdapter`):** Embedding and vector database gRPC/REST API driver.
 
-### 2.4 Telemetry & Validation Subsystem (`setve/validation/`)
+### 2.4 Telemetry & Validation Subsystem (`steve/validation/`)
 - **`ebpf_probe.py`:** Native Linux eBPF/XDP kernel tracepoints capturing physical NIC and block layer I/O counters out-of-band.
 - **`metric_collector.py`:** Sub-millisecond HDRHistogram latency and throughput aggregation.
 - **`evaluator.py`:** Telemetry divergence engine calculating metric skew ($\Delta \text{telemetry}$) between SUT self-reported stats and eBPF ground truth.
@@ -112,11 +113,11 @@ The **Universal Simulation & Telemetry Validation Engine (SETVE)** is a high-thr
 
 ### 3.1 Five Core Engineering Pillars
 
-1. **Mathematical Entropy Mechanics & SIMD Mutation (`setve/payload/`):** In-place AVX-512 bitwise XOR payload mutation sweeps entropy ($\alpha \in [0.0, 1.0]$) at line rate ($\ge 66\text{ Gbps}$ per core) to defeat hardware storage deduplication and compression without heap allocations.
-2. **Lock-Free Sub-Microsecond HDR Latency Profiling (`setve/validation/`):** 64-bucket logarithmic indexing $\mathcal{O}(1)$ histograms prevent GC observer effects and capture tail latency percentiles ($p_{50}, p_{90}, p_{99}, p_{99.9}$).
-3. **Ground-Truth Wire Triangulation (`setve/validation/`):** Dual-source arbitration comparing client-reported bytes with Linux kernel `eBPF`/`XDP` hardware counters ($\le 0.1\%$ skew SLA).
+1. **Mathematical Entropy Mechanics & SIMD Mutation (`steve/payload/`):** In-place AVX-512 bitwise XOR payload mutation sweeps entropy ($\alpha \in [0.0, 1.0]$) at line rate ($\ge 66\text{ Gbps}$ per core) to defeat hardware storage deduplication and compression without heap allocations.
+2. **Lock-Free Sub-Microsecond HDR Latency Profiling (`steve/validation/`):** 64-bucket logarithmic indexing $\mathcal{O}(1)$ histograms prevent GC observer effects and capture tail latency percentiles ($p_{50}, p_{90}, p_{99}, p_{99.9}$).
+3. **Ground-Truth Wire Triangulation (`steve/validation/`):** Dual-source arbitration comparing client-reported bytes with Linux kernel `eBPF`/`XDP` hardware counters ($\le 0.1\%$ skew SLA).
 4. **10 Production Workload Profiles & Chaos Engineering (`usecases/`):** Full spectrum from LLM KV-cache checkpointing to multi-tenant QoS contention and distributed node chaos failover.
-5. **Kernel-Bypass & Direct I/O Adapters (`setve/adapters/`):** Polymorphic `TargetAdapter` strategy supporting `O_DIRECT`, Linux `io_uring` SQE/CQE rings, S3 multipart chunking, and high-density vector databases.
+5. **Kernel-Bypass & Direct I/O Adapters (`steve/adapters/`):** Polymorphic `TargetAdapter` strategy supporting `O_DIRECT`, Linux `io_uring` SQE/CQE rings, S3 multipart chunking, and high-density vector databases.
 
 ### 3.2 Non-Negotiable Architectural Mandates
 
@@ -138,17 +139,13 @@ import os
 from typing import List
 import uvloop
 
-from setve.adapters.posix import PosixDirectIOAdapter
-from setve.adapters.base import TargetDescriptor
-from setve.payload.mutator import PySIMDPayloadMutator
+from steve.adapters.posix import PosixDirectIOAdapter
+from steve.adapters.base import TargetDescriptor
+from steve.payload.mutator import PySIMDPayloadMutator
 
 
 def _worker_process_main(
-    core_id: int, 
-    resource_path: str, 
-    block_size: int, 
-    entropy_ratio: float, 
-    duration_sec: int
+    core_id: int, resource_path: str, block_size: int, entropy_ratio: float, duration_sec: int
 ) -> None:
     """Worker entrypoint: Pinned to a single core, running an isolated uvloop event loop."""
     os.sched_setaffinity(0, {core_id})
@@ -160,8 +157,7 @@ def _worker_process_main(
 
         mutator = PySIMDPayloadMutator(buffer_size=block_size * 16)
         descriptor = TargetDescriptor(
-            endpoint_uri="file://local",
-            resource_path=f"{resource_path}_core_{core_id}.dat"
+            endpoint_uri="file://local", resource_path=f"{resource_path}_core_{core_id}.dat"
         )
 
         offset = 0
@@ -171,15 +167,15 @@ def _worker_process_main(
         try:
             while asyncio.get_running_loop().time() < end_time:
                 direct_buf = mutator.mutate_entropy_block(
-                    offset=0, 
-                    length=block_size, 
-                    entropy_ratio=entropy_ratio
+                    offset=0, length=block_size, entropy_ratio=entropy_ratio
                 )
                 await adapter.write(descriptor, offset, direct_buf)
                 offset += block_size
                 ops_completed += 1
 
-            print(f"[Core {core_id}] Completed {ops_completed} ops ({ops_completed * block_size / 1e9:.2f} GB)")
+            print(
+                f"[Core {core_id}] Completed {ops_completed} ops ({ops_completed * block_size / 1e9:.2f} GB)"
+            )
         finally:
             mutator.close()
 
@@ -193,14 +189,20 @@ class MultiCoreOrchestrator:
         self.core_ids = core_ids
         self.processes: List[mp.Process] = []
 
-    def start(self, resource_prefix: str, block_size: int = 1048576, entropy: float = 0.8, duration: int = 10):
+    def start(
+        self,
+        resource_prefix: str,
+        block_size: int = 1048576,
+        entropy: float = 0.8,
+        duration: int = 10,
+    ):
         print(f"Spawning {len(self.core_ids)} worker processes across cores {self.core_ids}...")
-        
+
         for core_id in self.core_ids:
             p = mp.Process(
                 target=_worker_process_main,
                 args=(core_id, resource_prefix, block_size, entropy, duration),
-                daemon=True
+                daemon=True,
             )
             p.start()
             self.processes.append(p)
@@ -217,12 +219,21 @@ class MultiCoreOrchestrator:
 import os
 from typing import Dict, Any
 from liburing import (
-    Ring, Cqe, io_uring_queue_init, io_uring_queue_exit,
-    io_uring_get_sqe, io_uring_prep_write, io_uring_submit,
-    io_uring_wait_cqe, io_uring_cqe_seen, O_DIRECT, O_WRONLY, O_CREAT
+    Ring,
+    Cqe,
+    io_uring_queue_init,
+    io_uring_queue_exit,
+    io_uring_get_sqe,
+    io_uring_prep_write,
+    io_uring_submit,
+    io_uring_wait_cqe,
+    io_uring_cqe_seen,
+    O_DIRECT,
+    O_WRONLY,
+    O_CREAT,
 )
 
-from setve.adapters.base import TargetAdapter, TargetDescriptor, DirectBuffer, AdapterCapabilities
+from steve.adapters.base import TargetAdapter, TargetDescriptor, DirectBuffer, AdapterCapabilities
 
 
 class IoUringTargetAdapter(TargetAdapter):
@@ -247,7 +258,7 @@ class IoUringTargetAdapter(TargetAdapter):
     async def write(self, target: TargetDescriptor, offset: int, payload: DirectBuffer) -> int:
         flags = O_WRONLY | O_CREAT | O_DIRECT
         fd = os.open(target.resource_path, flags, 0o666)
-        
+
         try:
             sqe = io_uring_get_sqe(self.ring)
             if not sqe:
@@ -300,5 +311,3 @@ Production-ready use case scenarios are maintained in the [`usecases/`](file:///
 8. **`usecases/usecase_08_chaos_node_failure.py`**: Distributed generator chaos engineering, node failure, and dynamic shard rebalancing.
 9. **`usecases/usecase_09_storage_tiering_lifecycle.py`**: Automated data tiering across Hot NVMe $\rightarrow$ Warm Block $\rightarrow$ Cold S3.
 10. **`usecases/usecase_10_tail_latency_microburst.py`**: High-resolution 64-bucket HDR histogram analysis under $50\text{ ms}$ micro-bursts.
-
-

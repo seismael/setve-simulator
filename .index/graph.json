@@ -8,8 +8,8 @@
       "domain": "data-plane",
       "layer": "storage",
       "code_references": [
-        "setve/adapters/io_uring.py",
-        "setve/adapters/posix.py"
+        "steve/adapters/io_uring.py",
+        "steve/adapters/posix.py"
       ],
       "test_references": [
         "tests/test_posix_io.py",
@@ -24,8 +24,8 @@
       "domain": "control-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/orchestrator/sync.py",
-        "setve/orchestrator/cluster.py"
+        "steve/orchestrator/sync.py",
+        "steve/orchestrator/cluster.py"
       ],
       "test_references": [
         "tests/test_cluster_sync.py",
@@ -40,10 +40,10 @@
       "domain": "data-plane",
       "layer": "storage",
       "code_references": [
-        "setve/adapters/io_uring.py",
-        "setve/adapters/posix.py",
-        "setve/adapters/factory.py",
-        "setve/adapters/base.py"
+        "steve/adapters/io_uring.py",
+        "steve/adapters/posix.py",
+        "steve/adapters/factory.py",
+        "steve/adapters/base.py"
       ],
       "test_references": [
         "tests/test_posix_io.py",
@@ -60,9 +60,9 @@
       "domain": "data-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/payload/mutator.py",
-        "setve/payload/buffer_pool.py",
-        "setve/payload/blueprint.py"
+        "steve/payload/mutator.py",
+        "steve/payload/buffer_pool.py",
+        "steve/payload/blueprint.py"
       ],
       "test_references": [
         "tests/test_mutator.py",
@@ -80,8 +80,8 @@
       "layer": "ingress",
       "code_references": [
         "deploy/packaging/operator/controller.py",
-        "deploy/packaging/helm/setve-cluster/values.yaml",
-        "deploy/packaging/operator/crds/setvecluster-crd.yaml"
+        "deploy/packaging/helm/steve-cluster/values.yaml",
+        "deploy/packaging/operator/crds/stevecluster-crd.yaml"
       ],
       "test_references": [
         "tests/test_deploy.py",
@@ -96,13 +96,13 @@
       "domain": "control-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/orchestrator/master.py",
-        "setve/orchestrator/worker.py",
-        "setve/orchestrator/cluster.py",
-        "setve/orchestrator/sync.py",
-        "setve/orchestrator/affinity.py",
-        "setve/validation/metric_collector.py",
-        "setve/validation/reporter.py"
+        "steve/orchestrator/master.py",
+        "steve/orchestrator/worker.py",
+        "steve/orchestrator/cluster.py",
+        "steve/orchestrator/sync.py",
+        "steve/orchestrator/affinity.py",
+        "steve/validation/metric_collector.py",
+        "steve/validation/reporter.py"
       ],
       "test_references": [
         "tests/test_cluster_sync.py",
@@ -119,10 +119,10 @@
       "domain": "data-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/validation/metric_collector.py",
-        "setve/validation/reporter.py",
-        "setve/validation/ebpf_probe.py",
-        "setve/validation/evaluator.py"
+        "steve/validation/metric_collector.py",
+        "steve/validation/reporter.py",
+        "steve/validation/ebpf_probe.py",
+        "steve/validation/evaluator.py"
       ],
       "test_references": [
         "tests/test_metric_collector.py",
@@ -131,17 +131,17 @@
         "tests/test_master_telemetry.py"
       ]
     },
-    "HLD-SETVE-001": {
-      "path": "docs\\02-hld\\compute-engine\\HLD-SETVE-001.md",
+    "HLD-STEVE-001": {
+      "path": "docs\\02-hld\\compute-engine\\HLD-STEVE-001.md",
       "title": "Universal Simulation Engine System Topology & Data Plane Architecture",
       "type": "HLD",
       "status": "APPROVED",
       "domain": "data-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/orchestrator/master.py",
-        "setve/payload/mutator.py",
-        "setve/adapters/base.py"
+        "steve/orchestrator/master.py",
+        "steve/payload/mutator.py",
+        "steve/adapters/base.py"
       ],
       "test_references": [
         "tests/benchmark_suite.py"
@@ -155,9 +155,9 @@
       "domain": "data-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/orchestrator/master.py",
-        "setve/orchestrator/cluster.py",
-        "setve/orchestrator/sync.py"
+        "steve/orchestrator/master.py",
+        "steve/orchestrator/cluster.py",
+        "steve/orchestrator/sync.py"
       ],
       "test_references": [
         "tests/test_master_telemetry.py"
@@ -185,8 +185,8 @@
       "domain": "infrastructure",
       "layer": "ingress",
       "code_references": [
-        "deploy/k8s/operator/controller.py",
-        "deploy/helm/setve-cluster/values.yaml"
+        "deploy/packaging/operator/controller.py",
+        "deploy/packaging/helm/steve-cluster/values.yaml"
       ],
       "test_references": [
         "tests/test_blueprint.py"
@@ -200,9 +200,9 @@
       "domain": "control-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/orchestrator/master.py",
-        "setve/orchestrator/cluster.py",
-        "setve/orchestrator/sync.py",
+        "steve/orchestrator/master.py",
+        "steve/orchestrator/cluster.py",
+        "steve/orchestrator/sync.py",
         "deploy/emulator/cluster_runner.py"
       ],
       "test_references": [
@@ -212,20 +212,20 @@
         "tests/test_deploy.py"
       ]
     },
-    "BRD-SETVE-001": {
-      "path": "docs\\01-brd\\data-plane\\BRD-SETVE-001.md",
-      "title": "Universal High-Throughput Simulation & Telemetry Validation Engine (SETVE)",
+    "BRD-STEVE-001": {
+      "path": "docs\\01-brd\\data-plane\\BRD-STEVE-001.md",
+      "title": "Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)",
       "type": "BRD",
       "status": "APPROVED",
       "domain": "data-plane",
       "layer": "compute-engine",
       "code_references": [
-        "setve/payload/buffer_pool.py",
-        "setve/payload/mutator.py",
-        "setve/adapters/posix.py",
-        "setve/adapters/io_uring.py",
-        "setve/validation/metric_collector.py",
-        "setve/validation/evaluator.py"
+        "steve/payload/buffer_pool.py",
+        "steve/payload/mutator.py",
+        "steve/adapters/posix.py",
+        "steve/adapters/io_uring.py",
+        "steve/validation/metric_collector.py",
+        "steve/validation/evaluator.py"
       ],
       "test_references": [
         "tests/test_alignment.py",
@@ -238,7 +238,7 @@
   "edges": [
     {
       "source": "ADR-0001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -248,7 +248,7 @@
     },
     {
       "source": "LLD-ADAPTER-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -258,7 +258,7 @@
     },
     {
       "source": "LLD-MUTATOR-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -268,7 +268,7 @@
     },
     {
       "source": "LLD-K8S-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -283,7 +283,7 @@
     },
     {
       "source": "LLD-ORCH-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -303,7 +303,7 @@
     },
     {
       "source": "LLD-VAL-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -312,23 +312,23 @@
       "relation": "governed_by"
     },
     {
-      "source": "HLD-SETVE-001",
-      "target": "BRD-SETVE-001",
+      "source": "HLD-STEVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
-      "source": "HLD-SETVE-001",
+      "source": "HLD-STEVE-001",
       "target": "ADR-0001",
       "relation": "governed_by"
     },
     {
-      "source": "HLD-SETVE-001",
+      "source": "HLD-STEVE-001",
       "target": "ADR-0002",
       "relation": "governed_by"
     },
     {
       "source": "HLD-DIST-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -348,7 +348,7 @@
     },
     {
       "source": "HLD-ENV-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {
@@ -368,7 +368,7 @@
     },
     {
       "source": "HLD-K8S-001",
-      "target": "BRD-SETVE-001",
+      "target": "BRD-STEVE-001",
       "relation": "implements"
     },
     {

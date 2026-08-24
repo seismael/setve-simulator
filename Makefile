@@ -3,7 +3,7 @@
 PYTHON ?= python3
 
 help:
-	@echo "SETVE Development & Automation Commands:"
+	@echo "STEVE Development & Automation Commands:"
 	@echo "  make install         Install package and dev dependencies in editable mode"
 	@echo "  make lint            Run Ruff linter checks across all source directories"
 	@echo "  make format          Auto-format codebase with Ruff"
@@ -21,13 +21,13 @@ install:
 	$(PYTHON) -m pip install -e ".[dev]"
 
 lint:
-	ruff check setve/ tests/ scripts/ deploy/ usecases/
+	ruff check steve/ tests/ scripts/ deploy/ usecases/
 
 format:
-	ruff format setve/ tests/ scripts/ deploy/ usecases/
+	ruff format steve/ tests/ scripts/ deploy/ usecases/
 
 typecheck:
-	mypy setve/ tests/ scripts/
+	mypy --explicit-package-bases steve/ tests/ scripts/ deploy/ usecases/
 
 test:
 	pytest tests/ -v

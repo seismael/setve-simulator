@@ -1,6 +1,6 @@
 """Tests for BufferPool page-aligned mmap ring allocator."""
 
-from setve.payload.buffer_pool import BufferPool
+from steve.payload.buffer_pool import BufferPool
 
 
 def test_buffer_pool_allocation_and_alignment() -> None:

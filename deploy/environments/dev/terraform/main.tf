@@ -23,51 +23,51 @@ variable "environment" {
 }
 
 # VPC & High-Throughput Subnet Provisioning
-resource "aws_vpc" "setve_dev_vpc" {
+resource "aws_vpc" "steve_dev_vpc" {
   cidr_block           = "10.100.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
 
   tags = {
-    Name        = "setve-${var.environment}-vpc"
+    Name        = "steve-${var.environment}-vpc"
     Environment = var.environment
   }
 }
 
-resource "aws_subnet" "setve_dev_subnet" {
-  vpc_id                  = aws_vpc.setve_dev_vpc.id
+resource "aws_subnet" "steve_dev_subnet" {
+  vpc_id                  = aws_vpc.steve_dev_vpc.id
   cidr_block              = "10.100.1.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "${var.aws_region}a"
 
   tags = {
-    Name = "setve-${var.environment}-subnet"
+    Name = "steve-${var.environment}-subnet"
   }
 }
 
-resource "aws_internet_gateway" "setve_gw" {
-  vpc_id = aws_vpc.setve_dev_vpc.id
+resource "aws_internet_gateway" "steve_gw" {
+  vpc_id = aws_vpc.steve_dev_vpc.id
 }
 
-resource "aws_route_table" "setve_rt" {
-  vpc_id = aws_vpc.setve_dev_vpc.id
+resource "aws_route_table" "steve_rt" {
+  vpc_id = aws_vpc.steve_dev_vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.setve_gw.id
+    gateway_id = aws_internet_gateway.steve_gw.id
   }
 }
 
-resource "aws_route_table_association" "setve_rta" {
-  subnet_id      = aws_subnet.setve_dev_subnet.id
-  route_table_id = aws_route_table.setve_rt.id
+resource "aws_route_table_association" "steve_rta" {
+  subnet_id      = aws_subnet.steve_dev_subnet.id
+  route_table_id = aws_route_table.steve_rt.id
 }
 
 # Security Group for Ephemeral Bare-Metal Development Node
-resource "aws_security_group" "setve_dev_sg" {
-  name        = "setve-${var.environment}-sg"
-  description = "Security group for SETVE kernel testing and dev node"
-  vpc_id      = aws_vpc.setve_dev_vpc.id
+resource "aws_security_group" "steve_dev_sg" {
+  name        = "steve-${var.environment}-sg"
+  description = "Security group for STEVE kernel testing and dev node"
+  vpc_id      = aws_vpc.steve_dev_vpc.id
 
   # SSH for developer access
   ingress {
@@ -94,12 +94,12 @@ resource "aws_security_group" "setve_dev_sg" {
 }
 
 # Dedicated Metal Instance supporting Direct I/O, NUMA, and io_uring
-resource "aws_instance" "setve_dev_node" {
+resource "aws_instance" "steve_dev_node" {
   ami           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS (Kernel 5.15+)
   instance_type = "c6i.metal"             # Bare-metal non-virtualized instance for Direct I/O
 
-  subnet_id                   = aws_subnet.setve_dev_subnet.id
-  vpc_security_group_ids      = [aws_security_group.setve_dev_sg.id]
+  subnet_id                   = aws_subnet.steve_dev_subnet.id
+  vpc_security_group_ids      = [aws_security_group.steve_dev_sg.id]
   associate_public_ip_address = true
 
   root_block_device {
@@ -113,13 +113,13 @@ resource "aws_instance" "setve_dev_node" {
   user_data = file("${path.module}/scripts/user_data.sh")
 
   tags = {
-    Name        = "setve-${var.environment}-baremetal-node"
+    Name        = "steve-${var.environment}-baremetal-node"
     Environment = var.environment
     Role        = "developer-sandbox"
   }
 }
 
 output "dev_node_public_ip" {
-  value       = aws_instance.setve_dev_node.public_ip
+  value       = aws_instance.steve_dev_node.public_ip
   description = "Public IP for SSH developer access to the ephemeral dev node"
 }

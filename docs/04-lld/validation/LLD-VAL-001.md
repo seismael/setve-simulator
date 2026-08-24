@@ -8,15 +8,15 @@ layer: "compute-engine"
 c4_level: "code"
 diataxis_type: "reference"
 traceability:
-  implements_brd: ["BRD-SETVE-001"]
+  implements_brd: ["BRD-STEVE-001"]
   governed_by_adr: ["ADR-0001"]
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: []
 code_references:
-  - "setve/validation/metric_collector.py"
-  - "setve/validation/reporter.py"
-  - "setve/validation/ebpf_probe.py"
-  - "setve/validation/evaluator.py"
+  - "steve/validation/metric_collector.py"
+  - "steve/validation/reporter.py"
+  - "steve/validation/ebpf_probe.py"
+  - "steve/validation/evaluator.py"
 test_references:
   - "tests/test_metric_collector.py"
   - "tests/test_reporter.py"
@@ -30,7 +30,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. Module Overview & Subsystem Architecture
 
-`LLD-VAL-001` specifies the concrete design and memory layout of the SETVE observability, metric collection, and validation plane. The subsystem ensures zero heap allocations on hot data-plane loops while providing sub-microsecond latency profiling ($p_{50}, p_{90}, p_{99}, p_{99.9}$) and out-of-band ground-truth hardware counter triangulation ($\le 0.1\%$ skew SLA).
+`LLD-VAL-001` specifies the concrete design and memory layout of the STEVE observability, metric collection, and validation plane. The subsystem ensures zero heap allocations on hot data-plane loops while providing sub-microsecond latency profiling ($p_{50}, p_{90}, p_{99}, p_{99.9}$) and out-of-band ground-truth hardware counter triangulation ($\le 0.1\%$ skew SLA).
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -38,7 +38,7 @@ last_validated_date: "2026-08-05"
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ┌───────────────────────────┐                ┌────────────────────────────┐   │
-│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ STEVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
 │   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
 │   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
 │                 │                                            │                  │
@@ -138,15 +138,15 @@ $$\text{Metric Skew (\%)} = \frac{|\text{Bytes}_{\text{Client}} - \text{Bytes}_{
 
 ---
 
-## 4. Telemetry Exporters (`setve/validation/reporter.py`)
+## 4. Telemetry Exporters (`steve/validation/reporter.py`)
 
 1. **Prometheus Text Format (`to_prometheus_metrics`)**:
-   - `setve_cluster_ops_total{run_id="..."}`
-   - `setve_cluster_bytes_total{run_id="..."}`
-   - `setve_cluster_throughput_gbps{run_id="..."}`
-   - `setve_cluster_latency_p99_ms{run_id="..."}`
-   - `setve_telemetry_divergence_percent{run_id="..."}`
-   - `setve_telemetry_is_valid{run_id="..."}`
+   - `steve_cluster_ops_total{run_id="..."}`
+   - `steve_cluster_bytes_total{run_id="..."}`
+   - `steve_cluster_throughput_gbps{run_id="..."}`
+   - `steve_cluster_latency_p99_ms{run_id="..."}`
+   - `steve_telemetry_divergence_percent{run_id="..."}`
+   - `steve_telemetry_is_valid{run_id="..."}`
 
 2. **JSON Sink (`to_json`)**: Complete typed JSON serialization for ClickHouse or Elasticsearch telemetry ingest.
 3. **ASCII Diagnostic Table (`format_table`)**: Formatted multi-column summary report safe for all terminal encodings (CP1252/UTF-8).

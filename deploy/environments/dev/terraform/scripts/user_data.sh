@@ -20,7 +20,7 @@ apt-get install -y \
     numactl
 
 # 2. Configure High-Performance Kernel Parameters (io_uring & HugePages)
-cat <<'EOF' > /etc/sysctl.d/99-setve-performance.conf
+cat <<'EOF' > /etc/sysctl.d/99-steve-performance.conf
 # Enable unprivileged eBPF and io_uring
 kernel.unprivileged_bpf_disabled=0
 net.core.bpf_jit_enable=1
@@ -68,4 +68,4 @@ else
     echo "WARNING: Check kernel features for io_uring support."
 fi
 
-echo "SETVE Dev Sandbox initialization complete."
+echo "STEVE Dev Sandbox initialization complete."

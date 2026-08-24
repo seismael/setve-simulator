@@ -7,12 +7,12 @@ import json
 import sys
 from pathlib import Path
 
-from setve.logging import configure_logging, get_logger
+from steve.logging import configure_logging, get_logger
 
 
 def validate_packaging_artifacts() -> bool:
     """Validate Docker, Helm, and Operator packaging artifacts."""
-    logger = get_logger("setve.deploy.validate")
+    logger = get_logger("steve.deploy.validate")
     base_dir = Path(__file__).parent.parent
     pkg_dir = base_dir / "deploy" / "packaging"
 
@@ -20,13 +20,13 @@ def validate_packaging_artifacts() -> bool:
         pkg_dir / "docker" / "Dockerfile",
         pkg_dir / "docker" / "entrypoint.sh",
         pkg_dir / "docker" / "README.md",
-        pkg_dir / "helm" / "setve-cluster" / "Chart.yaml",
-        pkg_dir / "helm" / "setve-cluster" / "values.yaml",
-        pkg_dir / "helm" / "setve-cluster" / "templates" / "master-deployment.yaml",
-        pkg_dir / "helm" / "setve-cluster" / "templates" / "worker-daemonset.yaml",
-        pkg_dir / "helm" / "setve-cluster" / "templates" / "service.yaml",
+        pkg_dir / "helm" / "steve-cluster" / "Chart.yaml",
+        pkg_dir / "helm" / "steve-cluster" / "values.yaml",
+        pkg_dir / "helm" / "steve-cluster" / "templates" / "master-deployment.yaml",
+        pkg_dir / "helm" / "steve-cluster" / "templates" / "worker-daemonset.yaml",
+        pkg_dir / "helm" / "steve-cluster" / "templates" / "service.yaml",
         pkg_dir / "operator" / "controller.py",
-        pkg_dir / "operator" / "crds" / "setvecluster-crd.yaml",
+        pkg_dir / "operator" / "crds" / "stevecluster-crd.yaml",
     ]
 
     all_valid = True
@@ -42,7 +42,7 @@ def validate_packaging_artifacts() -> bool:
 
 def validate_environment_overlays() -> bool:
     """Validate environment progression overlays (local, dev, staging, prod)."""
-    logger = get_logger("setve.deploy.validate")
+    logger = get_logger("steve.deploy.validate")
     base_dir = Path(__file__).parent.parent
     env_dir = base_dir / "deploy" / "environments"
 
@@ -51,7 +51,7 @@ def validate_environment_overlays() -> bool:
         env_dir / "local" / "prometheus.yml",
         env_dir / "local" / "grafana" / "provisioning" / "datasources" / "datasource.yml",
         env_dir / "local" / "grafana" / "provisioning" / "dashboards" / "dashboard.yml",
-        env_dir / "local" / "grafana" / "dashboards" / "setve_telemetry.json",
+        env_dir / "local" / "grafana" / "dashboards" / "steve_telemetry.json",
         env_dir / "dev" / "terraform" / "main.tf",
         env_dir / "staging" / "values.staging.yaml",
         env_dir / "prod" / "values.prod.yaml",
@@ -66,7 +66,7 @@ def validate_environment_overlays() -> bool:
             logger.info("Found environment manifest: %s (%d bytes)", f.name, f.stat().st_size)
 
     # Validate JSON syntax for Grafana dashboard
-    dashboard_json = env_dir / "local" / "grafana" / "dashboards" / "setve_telemetry.json"
+    dashboard_json = env_dir / "local" / "grafana" / "dashboards" / "steve_telemetry.json"
     if dashboard_json.exists():
         try:
             with open(dashboard_json, encoding="utf-8") as fh:
@@ -82,7 +82,7 @@ def validate_environment_overlays() -> bool:
 
 async def validate_cluster_emulator() -> bool:
     """Validate that local cluster emulator runs successfully end to end."""
-    logger = get_logger("setve.deploy.validate")
+    logger = get_logger("steve.deploy.validate")
     from deploy.emulator.cluster_runner import LocalClusterEmulator
 
     try:
@@ -103,10 +103,10 @@ async def validate_cluster_emulator() -> bool:
 async def main() -> int:
     """Run all deployment architecture validation checks."""
     configure_logging()
-    logger = get_logger("setve.deploy.validate")
+    logger = get_logger("steve.deploy.validate")
 
     print("\n" + "=" * 80)
-    print("  SETVE 3-TIER ENTERPRISE DEPLOYMENT ARCHITECTURE VALIDATOR")
+    print("  STEVE 3-TIER ENTERPRISE DEPLOYMENT ARCHITECTURE VALIDATOR")
     print("=" * 80)
 
     pkg_ok = validate_packaging_artifacts()

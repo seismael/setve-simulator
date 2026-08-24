@@ -1,4 +1,4 @@
-"""SETVE Use Case 10: Tail-Latency Micro-Burst & Jitter Analysis.
+"""STEVE Use Case 10: Tail-Latency Micro-Burst & Jitter Analysis.
 
 Simulates periodic high-intensity I/O micro-bursts:
 1. Baseline Phase: Smooth steady-state 4 KB requests.
@@ -14,15 +14,15 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.adapters.base import TargetDescriptor  # noqa: E402
-from setve.adapters.factory import AdapterFactory  # noqa: E402
-from setve.payload.buffer_pool import BufferPool  # noqa: E402
-from setve.validation.metric_collector import MetricCollector  # noqa: E402
+from steve.adapters.base import TargetDescriptor  # noqa: E402
+from steve.adapters.factory import AdapterFactory  # noqa: E402
+from steve.payload.buffer_pool import BufferPool  # noqa: E402
+from steve.validation.metric_collector import MetricCollector  # noqa: E402
 
 
 async def run_microburst_simulation(
@@ -33,7 +33,7 @@ async def run_microburst_simulation(
 ) -> int:
     """Execute micro-burst traffic generation and tail-latency HDR analysis."""
     print("=" * 80)
-    print("  SETVE USE CASE 10: Tail-Latency Micro-Burst & Jitter Analysis")
+    print("  STEVE USE CASE 10: Tail-Latency Micro-Burst & Jitter Analysis")
     print("=" * 80)
 
     cleanup_tmp = False
@@ -155,7 +155,7 @@ async def run_microburst_simulation(
 def main() -> int:
     """Parse CLI options and execute micro-burst simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 10: Tail-Latency Micro-Burst & Jitter Analysis"
+        description="STEVE Use Case 10: Tail-Latency Micro-Burst & Jitter Analysis"
     )
     parser.add_argument(
         "--steady-ops",

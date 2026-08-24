@@ -8,9 +8,9 @@ layer: "ingress"
 c4_level: "container"
 diataxis_type: "explanation"
 traceability:
-  implements_brd: ["BRD-SETVE-001", "BRD-DIST-001"]
+  implements_brd: ["BRD-STEVE-001", "BRD-DIST-001"]
   governed_by_adr: ["ADR-0001", "ADR-0002"]
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: []
 code_references:
   - "deploy/environments/local/prometheus.yml"
@@ -25,7 +25,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. Executive Summary & Environment Taxonomy
 
-This document establishes the official 4-tier environment deployment matrix for SETVE. Because SETVE depends on low-level Linux kernel features (`io_uring`, `O_DIRECT`, eBPF probes, `CAP_SYS_ADMIN`, and NUMA core pinning), standard application environments are insufficient. 
+This document establishes the official 4-tier environment deployment matrix for STEVE. Because STEVE depends on low-level Linux kernel features (`io_uring`, `O_DIRECT`, eBPF probes, `CAP_SYS_ADMIN`, and NUMA core pinning), standard application environments are insufficient. 
 
 The environment topology provides developer agility on local workstations while guaranteeing hardware-accurate performance validation across remote sandboxes, staging clusters, and production releases.
 
@@ -44,7 +44,7 @@ The environment topology provides developer agility on local workstations while 
 * **Goal:** Sub-second inner-loop feedback for writing business logic, unit tests, and driver interfaces without requiring a Linux kernel with `io_uring` or root access.
 * **Architecture:**
   * Uses a fallback mock driver (`PosixDirectIOAdapter`) or standard socket emulation when native `io_uring` kernel headers are absent.
-  * Local containerized dependencies (SETVE, MinIO, Prometheus, Grafana) managed via `deploy/environments/local/docker-compose.yml`.
+  * Local containerized dependencies (STEVE, MinIO, Prometheus, Grafana) managed via `deploy/environments/local/docker-compose.yml`.
 * **Resource Bounds:** 2 to 4 CPU cores, mock storage directories, loopback network (`127.0.0.1`).
 
 #### 2.1.1 Local Multi-Node Cluster Emulator (`deploy/emulator/cluster_runner.py`)
@@ -103,7 +103,7 @@ To validate distributed multi-node coordination without cloud infrastructure, th
 
 ## 3. Kernel & Hardware Capability Matrix
 
-Because SETVE targets bare-metal execution parameters, each environment tier exposes specific hardware interfaces:
+Because STEVE targets bare-metal execution parameters, each environment tier exposes specific hardware interfaces:
 
 ```text
 [ Local (Laptop) ]       ──► Fallback Driver  ──► Mock Sockets / POSIX File Handles
@@ -154,6 +154,6 @@ Because SETVE targets bare-metal execution parameters, each environment tier exp
 
 ## 5. Security Isolation & Environment Guardrails
 
-* **Privilege Boundaries:** `CAP_SYS_ADMIN` privileges required for `io_uring` and eBPF are restricted to worker pod security contexts using Kubernetes Pod Security Admission (`PSA: privileged`) scoped strictly to `setve-system` namespaces.
+* **Privilege Boundaries:** `CAP_SYS_ADMIN` privileges required for `io_uring` and eBPF are restricted to worker pod security contexts using Kubernetes Pod Security Admission (`PSA: privileged`) scoped strictly to `steve-system` namespaces.
 * **Network Partitioning:** Staging and Dev environments operate on isolated VLANs/subnets to prevent synthetic traffic generation from leaking into internal corporate networks or production SUT endpoints.
 * **Data Sanitization:** Local and Dev environments use synthetic random data generators (`PySIMDPayloadMutator`) exclusively; no production telemetry or customer configuration schemas are stored in non-production environments.

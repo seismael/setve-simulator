@@ -8,14 +8,14 @@ layer: "ingress"
 c4_level: "code"
 diataxis_type: "reference"
 traceability:
-  implements_brd: ["BRD-SETVE-001", "BRD-DIST-001"]
+  implements_brd: ["BRD-STEVE-001", "BRD-DIST-001"]
   governed_by_adr: ["ADR-0002"]
   parent_hld: "HLD-K8S-001"
   child_llds: []
 code_references:
   - "deploy/packaging/operator/controller.py"
-  - "deploy/packaging/helm/setve-cluster/values.yaml"
-  - "deploy/packaging/operator/crds/setvecluster-crd.yaml"
+  - "deploy/packaging/helm/steve-cluster/values.yaml"
+  - "deploy/packaging/operator/crds/stevecluster-crd.yaml"
 test_references:
   - "tests/test_deploy.py"
   - "tests/test_blueprint.py"
@@ -27,7 +27,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. Operator Architecture & CRD Reconciliation
 
-`LLD-K8S-001` specifies the `SETVECluster` reconcile logic. The Python-based Kopf operator responds to CRD modifications (`setve.io/v1alpha1`), translating declarative throughput and node specs into scalable Kubernetes resources managed by KEDA.
+`LLD-K8S-001` specifies the `STEVECluster` reconcile logic. The Python-based Kopf operator responds to CRD modifications (`steve.io/v1alpha1`), translating declarative throughput and node specs into scalable Kubernetes resources managed by KEDA.
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -35,7 +35,7 @@ last_validated_date: "2026-08-05"
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ┌───────────────────────────┐                ┌────────────────────────────┐   │
-│   │ SETVECluster CRD Spec     │ ─────────────> │ Kopf Operator Controller   │   │
+│   │ STEVECluster CRD Spec     │ ─────────────> │ Kopf Operator Controller   │   │
 │   │ (nodeCount: 16, 200 Gbps) │                │ (deploy/packaging/operator)│   │
 │   └───────────────────────────┘                └─────────────┬──────────────┘   │
 │                                                              │                  │
@@ -59,14 +59,14 @@ last_validated_date: "2026-08-05"
 ## 2. Operator Controller Logic (`deploy/packaging/operator/controller.py`)
 
 ```python
-"""Kubernetes Operator for SETVECluster CRD Lifecycle."""
+"""Kubernetes Operator for STEVECluster CRD Lifecycle."""
 
 import kopf
 
 
-@kopf.on.create("setve.io", "v1alpha1", "setveclusters")
+@kopf.on.create("steve.io", "v1alpha1", "steveclusters")
 def create_fn(spec: dict, name: str, namespace: str, logger: kopf.Logger, **kwargs: dict) -> dict:
-    logger.info(f"Reconciling SETVECluster: {name} in {namespace}")
+    logger.info(f"Reconciling STEVECluster: {name} in {namespace}")
 
     node_count = spec.get("nodeCount", 2)
     cores_per_node = spec.get("coresPerNode", 4)

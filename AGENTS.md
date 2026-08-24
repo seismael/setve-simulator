@@ -1,4 +1,4 @@
-# AGENTS.md: Universal Simulation & Telemetry Validation Engine (SETVE)
+# AGENTS.md: Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)
 
 ## Dynamic Governance & Self-Evolution Protocol
 
@@ -11,17 +11,17 @@
 ---
 
 ## Project Vision & System Context
-**SETVE** is a platform-agnostic load generation and telemetry verification framework engineered to stress-test high-performance storage and data-plane systems ($\ge 8\text{ GB/s}$ per node to multi-TB/s clusters) across NVMe-oF, POSIX Direct I/O, S3 object stores, vector databases, and AI prefill/decode pipelines.
+**STEVE** (Storage, Telemetry, Engine, Verification, and Evaluation) is a platform-agnostic, multi-gigabyte-per-second load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems from single nodes to multi-TB/s clusters across NVMe-oF, POSIX Direct I/O, S3 object stores, vector databases, and AI prefill/decode pipelines.
 
 Primary runtime: **Python 3.12+**.
-For detailed technical design and implementation blueprints, refer to [SPEC.md](file:///c:/dev/projects/simulate/SPEC.md) and [docs/DOCUMENTATION.md](file:///c:/dev/projects/simulate/docs/DOCUMENTATION.md).
+For detailed technical design and implementation blueprints, refer to [SPEC.md](file:///c:/dev/projects/setve-simulator/SPEC.md) and [docs/DOCUMENTATION.md](file:///c:/dev/projects/setve-simulator/docs/DOCUMENTATION.md).
 
 ---
 
 ## Directory & Package Layout
 
 ```
-setve/
+steve/
 ├── __init__.py
 ├── pyproject.toml             # Build specs, mypy --strict, ruff config
 ├── adapters/                  # Protocol & Storage Target Drivers
@@ -84,10 +84,10 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 
 ### 4. Interface Segregation & Driver Agnosticism
 * **Constraint:** Orchestration engine and payload mutators must never depend directly on specific SUT drivers or protocol implementations.
-* **Enforcement:** Transport drivers must subclass `setve.adapters.base.TargetAdapter`. Interactions occur solely via async `read()`, `write()`, and `flush()` methods accepting `DirectBuffer` instances.
+* **Enforcement:** Transport drivers must subclass `steve.adapters.base.TargetAdapter`. Interactions occur solely via async `read()`, `write()`, and `flush()` methods accepting `DirectBuffer` instances.
 
 ### 5. Dual-Indexed Documentation & End-to-End Traceability
-* **Constraint:** All design documents, specifications, and architecture decisions must conform to the dual-indexed schema and taxonomy in [docs/DOCUMENTATION.md](file:///c:/dev/projects/simulate/docs/DOCUMENTATION.md).
+* **Constraint:** All design documents, specifications, and architecture decisions must conform to the dual-indexed schema and taxonomy in [docs/DOCUMENTATION.md](file:///c:/dev/projects/setve-simulator/docs/DOCUMENTATION.md).
 * **Enforcement:**
   - Enforce YAML frontmatter schema (`id`, `type`, `status`, `domain`, `layer`, `c4_level`, `diataxis_type`, `traceability`, `code_references`).
   - Maintain the unbroken traceability DAG ($\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD} \rightarrow \text{Code/Test}$).
@@ -126,7 +126,7 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 ### 12. Unified Exception Hierarchy & Zero-Allocation Structured Logging
 * **Constraint:** System faults must never raise raw, generic Python exceptions (`Exception`, `ValueError`, `OSError`) without explicit domain context. Logging must never block or allocate dynamically on I/O hot paths.
 * **Enforcement:**
-  - Map all OS `errno` codes to granular `SetveError` subclasses (`MisalignedOffsetError`, `HardwareIoError`, `StorageExhaustedError`, `ConnectionTimeoutError`).
+  - Map all OS `errno` codes to granular `SteveError` subclasses (`MisalignedOffsetError`, `HardwareIoError`, `StorageExhaustedError`, `ConnectionTimeoutError`).
   - Hot paths must use asynchronous or queue-based structured loggers with log-level gating, ensuring zero string interpolation overhead during active I/O loops.
 
 ### 13. 3-Tier Enterprise Deployment Governance (`deploy/`)
@@ -153,9 +153,9 @@ AI agents MUST adhere to these non-negotiable architectural mandates:
 ## Agent Task Execution Workflow
 
 1. **Evaluate Request & Update Governance:** Parse incoming user prompt for behavioral feedback/preferences. If present, immediately update `AGENTS.md` rules first.
-2. **Trace Context & Specs (ADX Efficient Navigation):** Do NOT read `docs/` sequentially. Use `grep_search` on the `docs/` directory to locate specific `domain:`, `id:`, or `code_references:` matches (e.g., search for `setve/payload/mutator.py` to find its governing LLD). Use `view_file` on `.index/graph.json` to instantly map dependencies ($\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$) without wasting tokens on full file reads. Keep your context window tight.
+2. **Trace Context & Specs (ADX Efficient Navigation):** Do NOT read `docs/` sequentially. Use `grep_search` on the `docs/` directory to locate specific `domain:`, `id:`, or `code_references:` matches (e.g., search for `steve/payload/mutator.py` to find its governing LLD). Use `view_file` on `.index/graph.json` to instantly map dependencies ($\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$) without wasting tokens on full file reads. Keep your context window tight.
 3. **Classify Scope:** Identify whether task touches **Control Plane** (`orchestrator/`), **Data Plane** (`adapters/`, `payload/`), or **Validation Plane** (`validation/`).
 4. **Hot Path Audit:** If modifying `adapters/` or `payload/`, verify zero dynamic allocations or data copying.
 5. **Alignment Verification:** Validate $4096\text{-byte}$ page alignment on new buffer slicing operations.
-6. **Type Check & Unit Test:** Run `mypy setve/` and `pytest tests/test_alignment.py`.
+6. **Type Check & Unit Test:** Run `mypy steve/` and `pytest tests/test_alignment.py`.
 7. **Regression Verification:** Run `tests/benchmark_adapters.py` to confirm zero throughput degradation on hot paths.

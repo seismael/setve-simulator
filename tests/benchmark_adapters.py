@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from setve.adapters.base import DirectBuffer, TargetDescriptor
-from setve.adapters.posix import PosixDirectIOAdapter
+from steve.adapters.base import DirectBuffer, TargetDescriptor
+from steve.adapters.posix import PosixDirectIOAdapter
 
 
 def benchmark_posix_adapter() -> None:

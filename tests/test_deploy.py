@@ -22,7 +22,7 @@ def test_packaging_artifacts_exist() -> None:
     assert (docker_dir / "README.md").exists()
 
     # Helm
-    helm_dir = pkg_dir / "helm" / "setve-cluster"
+    helm_dir = pkg_dir / "helm" / "steve-cluster"
     assert (helm_dir / "Chart.yaml").exists()
     assert (helm_dir / "values.yaml").exists()
     assert (helm_dir / "templates" / "master-deployment.yaml").exists()
@@ -32,7 +32,7 @@ def test_packaging_artifacts_exist() -> None:
     # Operator & CRD
     op_dir = pkg_dir / "operator"
     assert (op_dir / "controller.py").exists()
-    assert (op_dir / "crds" / "setvecluster-crd.yaml").exists()
+    assert (op_dir / "crds" / "stevecluster-crd.yaml").exists()
 
 
 def test_environments_overlays_exist() -> None:
@@ -44,10 +44,10 @@ def test_environments_overlays_exist() -> None:
     local_dir = env_dir / "local"
     assert (local_dir / "docker-compose.yml").exists()
     assert (local_dir / "prometheus.yml").exists()
-    assert (local_dir / "grafana" / "dashboards" / "setve_telemetry.json").exists()
+    assert (local_dir / "grafana" / "dashboards" / "steve_telemetry.json").exists()
 
     # Validate Grafana JSON schema
-    grafana_dash = local_dir / "grafana" / "dashboards" / "setve_telemetry.json"
+    grafana_dash = local_dir / "grafana" / "dashboards" / "steve_telemetry.json"
     with open(grafana_dash, encoding="utf-8") as f:
         dash_data = json.load(f)
         assert "panels" in dash_data

@@ -4,11 +4,11 @@ import sys
 
 import pytest
 
-from setve.adapters.factory import AdapterFactory
-from setve.adapters.io_uring import IoUringTargetAdapter
-from setve.adapters.posix import PosixDirectIOAdapter
-from setve.adapters.s3 import S3TargetAdapter
-from setve.adapters.vector import VectorTargetAdapter
+from steve.adapters.factory import AdapterFactory
+from steve.adapters.io_uring import IoUringTargetAdapter
+from steve.adapters.posix import PosixDirectIOAdapter
+from steve.adapters.s3 import S3TargetAdapter
+from steve.adapters.vector import VectorTargetAdapter
 
 
 def test_factory_resolves_posix() -> None:

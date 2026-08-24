@@ -1,8 +1,8 @@
-# Contributing to SETVE
+# Contributing to STEVE
 
-Thank you for your interest in contributing to the **Universal Simulation & Telemetry Validation Engine (SETVE)**!
+Thank you for your interest in contributing to the **Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)**!
 
-SETVE is an open-source, high-performance load generation and telemetry verification framework built with strict Domain-Driven Design (DDD), Gang of Four (GoF) design patterns, and zero-allocation data-plane hot loops.
+STEVE is an open-source, high-performance load generation and telemetry verification framework built with strict Domain-Driven Design (DDD), Gang of Four (GoF) design patterns, and zero-allocation data-plane hot loops.
 
 ---
 
@@ -14,7 +14,7 @@ All contributors and maintainers are expected to adhere to our [Code of Conduct]
 
 ## 2. Architectural Guardrails & Non-Negotiables
 
-When developing or modifying SETVE components, you **must** adhere to these core architectural constraints:
+When developing or modifying STEVE components, you **must** adhere to these core architectural constraints:
 
 1. **Zero Allocations in Hot Paths:**
    - No heap allocations (`dict`, `list`, class instantiation, string concatenations) inside active read/write loops or payload mutation passes.
@@ -43,8 +43,8 @@ When developing or modifying SETVE components, you **must** adhere to these core
 ### Workspace Setup
 ```bash
 # 1. Clone the repository
-git clone https://github.com/seismael/setve-simulator.git
-cd setve-simulator
+git clone https://github.com/seismael/steve-simulator.git
+cd steve-simulator
 
 # 2. Create virtual environment and install in editable mode
 python -m venv .venv
@@ -63,13 +63,13 @@ Before opening a pull request, ensure all checks pass:
 
 ```bash
 # Run static analysis and formatting checks
-ruff check setve/ tests/ scripts/ deploy/ usecases/
-ruff format --check setve/ tests/ scripts/ deploy/ usecases/
+ruff check steve/ tests/ scripts/ deploy/ usecases/
+ruff format --check steve/ tests/ scripts/ deploy/ usecases/
 
 # Run strict type checking
-mypy setve/ tests/ scripts/
+mypy steve/ tests/ scripts/
 
-# Run complete test suite (40 tests)
+# Run complete test suite (62 tests)
 pytest -v
 
 # Run multi-subsystem performance benchmark suite

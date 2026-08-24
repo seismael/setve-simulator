@@ -13,8 +13,8 @@ traceability:
   parent_hld: "HLD-DIST-001"
   child_llds: ["LLD-ORCH-001"]
 code_references:
-  - "setve/orchestrator/sync.py"
-  - "setve/orchestrator/cluster.py"
+  - "steve/orchestrator/sync.py"
+  - "steve/orchestrator/cluster.py"
 test_references:
   - "tests/test_cluster_sync.py"
   - "tests/test_sharding.py"

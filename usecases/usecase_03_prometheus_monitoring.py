@@ -14,13 +14,13 @@ import threading
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
-from setve.payload.blueprint import WorkloadBlueprint  # noqa: E402
+from steve.orchestrator.master import MultiCoreOrchestrator  # noqa: E402
+from steve.payload.blueprint import WorkloadBlueprint  # noqa: E402
 
 
 class TelemetryHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
@@ -60,7 +60,7 @@ def run_prometheus_monitoring(
 ) -> int:
     """Run workload and export Prometheus and JSON metrics."""
     print("=" * 80)
-    print("  SETVE USE CASE 03: Prometheus & Telemetry Monitoring Exporter")
+    print("  STEVE USE CASE 03: Prometheus & Telemetry Monitoring Exporter")
     print("=" * 80)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -123,7 +123,7 @@ def run_prometheus_monitoring(
 def main() -> int:
     """Parse CLI options and run telemetry exporter."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 03: Prometheus & Telemetry Exporter"
+        description="STEVE Use Case 03: Prometheus & Telemetry Exporter"
     )
     parser.add_argument(
         "--duration",

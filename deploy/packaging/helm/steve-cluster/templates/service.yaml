@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "steve-cluster.fullname" . }}-master
+  labels:
+    {{- include "steve-cluster.labels" . | nindent 4 }}
+    role: master
+spec:
+  type: {{ .Values.master.service.type | default "ClusterIP" }}
+  ports:
+    - name: grpc-sync
+      port: {{ .Values.master.service.port | default 50051 }}
+      targetPort: 50051
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.master.service.metricsPort | default 8123 }}
+      targetPort: 9100
+      protocol: TCP
+  selector:
+    {{- include "steve-cluster.labels" . | nindent 4 }}
+    role: master

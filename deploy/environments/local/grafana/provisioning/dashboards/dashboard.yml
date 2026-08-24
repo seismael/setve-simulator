@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: 'SETVE Dashboards'
+  - name: 'STEVE Dashboards'
     orgId: 1
-    folder: 'SETVE Telemetry'
+    folder: 'STEVE Telemetry'
     type: file
     disableDeletion: false
     editable: true

@@ -1,6 +1,6 @@
-# SETVE Environments Lifecycle & Infrastructure Guide
+# STEVE Environments Lifecycle & Infrastructure Guide
 
-This guide details the multi-tier environment progression supporting SETVE from local testing to multi-terabyte production deployments.
+This guide details the multi-tier environment progression supporting STEVE from local testing to multi-terabyte production deployments.
 
 ---
 
@@ -18,7 +18,7 @@ This guide details the multi-tier environment progression supporting SETVE from 
 ## Local Environment Quickstart
 
 ```bash
-# Start full local developer stack (SETVE, MinIO, Prometheus, Grafana)
+# Start full local developer stack (STEVE, MinIO, Prometheus, Grafana)
 docker compose -f deploy/environments/local/docker-compose.yml up -d
 
 # Execute a simulation with telemetry output

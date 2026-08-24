@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "setve"
+name = "steve"
 version = "0.2.0"
-description = "Universal Simulation & Telemetry Validation Engine for High-Throughput Storage & Data Planes"
+description = "STEVE: Storage, Telemetry, Engine, Verification, and Evaluation for High-Throughput Storage & Data Planes"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 authors = [
-    { name = "SETVE Architecture Team" }
+    { name = "STEVE Architecture Team" }
 ]
 keywords = [
     "storage",
@@ -49,27 +49,28 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/seismael/setve-simulator"
-Documentation = "https://github.com/seismael/setve-simulator/tree/master/docs"
-Repository = "https://github.com/seismael/setve-simulator.git"
-Issues = "https://github.com/seismael/setve-simulator/issues"
-Changelog = "https://github.com/seismael/setve-simulator/releases"
+Homepage = "https://github.com/seismael/steve-simulator"
+Documentation = "https://github.com/seismael/steve-simulator/tree/master/docs"
+Repository = "https://github.com/seismael/steve-simulator.git"
+Issues = "https://github.com/seismael/steve-simulator/issues"
+Changelog = "https://github.com/seismael/steve-simulator/releases"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
     "mypy>=1.8.0",
     "ruff>=0.2.0",
     "types-pyyaml>=6.0.12",
 ]
 
 [project.scripts]
-setve = "setve.orchestrator.master:main"
+steve = "steve.orchestrator.master:main"
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["setve"]
+packages = ["steve"]
 
 # Strict Type Checking Configuration
 [tool.mypy]
@@ -84,10 +85,15 @@ disallow_untyped_decorators = true
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["liburing.*", "uvloop.*"]
+module = ["liburing.*", "uvloop.*", "kopf.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["deploy.packaging.operator.controller"]
+disallow_untyped_decorators = false
 
 # Fast Linter / Formatter Configuration
 [tool.ruff]

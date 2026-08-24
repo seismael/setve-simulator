@@ -2,7 +2,7 @@
 
 import pytest
 
-from setve.adapters.base import DirectBuffer
+from steve.adapters.base import DirectBuffer
 
 
 def test_buffer_alignment_pass() -> None:

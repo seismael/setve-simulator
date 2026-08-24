@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "steve-cluster.fullname" . }}-worker
+  labels:
+    {{- include "steve-cluster.labels" . | nindent 4 }}
+    role: worker
+spec:
+  selector:
+    matchLabels:
+      {{- include "steve-cluster.labels" . | nindent 6 }}
+      role: worker
+  template:
+    metadata:
+      labels:
+        {{- include "steve-cluster.labels" . | nindent 8 }}
+        role: worker
+    spec:
+      hostIPC: {{ .Values.worker.hostIPC | default true }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy | default "IfNotPresent" }}
+          securityContext:
+            {{- toYaml .Values.worker.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          env:
+            - name: STEVE_MASTER_HOST
+              value: {{ include "steve-cluster.fullname" . }}-master
+            - name: STEVE_MASTER_PORT
+              value: "50051"

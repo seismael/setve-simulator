@@ -1,4 +1,4 @@
-# Staging Environment Configuration for SETVE Cluster
+# Staging Environment Configuration for STEVE Cluster
 # Target: 100 Gbps Pre-Production Validation
 
 global:
@@ -16,7 +16,7 @@ master:
 
 worker:
   nodeSelector:
-    setve.io/performance-tier: "staging-nvme-storage"
+    steve.io/performance-tier: "staging-nvme-storage"
   resources:
     limits:
       cpu: "8"

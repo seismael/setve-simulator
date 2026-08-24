@@ -1,4 +1,4 @@
-# SETVE Local Cluster Emulator (`deploy/emulator/`)
+# STEVE Local Cluster Emulator (`deploy/emulator/`)
 
 Emulates a distributed, multi-node storage load generation cluster entirely on local host infrastructure.
 

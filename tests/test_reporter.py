@@ -1,7 +1,7 @@
 """Tests for TelemetryReporter, Prometheus metric generation, and table formatting."""
 
-from setve.validation.evaluator import DivergenceResult
-from setve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
+from steve.validation.evaluator import DivergenceResult
+from steve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
 
 
 def test_cluster_telemetry_summary_to_dict_and_json() -> None:
@@ -72,10 +72,10 @@ def test_cluster_telemetry_prometheus_export() -> None:
     )
 
     prom_text = summary.to_prometheus_metrics()
-    assert 'setve_cluster_ops_total{run_id="prom-run-1"} 5000' in prom_text
-    assert 'setve_cluster_bytes_total{run_id="prom-run-1"} 5242880000' in prom_text
-    assert 'setve_cluster_throughput_gbps{run_id="prom-run-1"} 20.9700' in prom_text
-    assert 'setve_telemetry_is_valid{run_id="prom-run-1"} 1' in prom_text
+    assert 'steve_cluster_ops_total{run_id="prom-run-1"} 5000' in prom_text
+    assert 'steve_cluster_bytes_total{run_id="prom-run-1"} 5242880000' in prom_text
+    assert 'steve_cluster_throughput_gbps{run_id="prom-run-1"} 20.9700' in prom_text
+    assert 'steve_telemetry_is_valid{run_id="prom-run-1"} 1' in prom_text
 
 
 def test_cluster_telemetry_table_formatting() -> None:
@@ -106,6 +106,6 @@ def test_cluster_telemetry_table_formatting() -> None:
     )
 
     table = summary.format_table()
-    assert "SETVE SIMULATION & TELEMETRY REPORT: table-run" in table
+    assert "STEVE SIMULATION & TELEMETRY REPORT: table-run" in table
     assert "CORE BREAKDOWN" in table
     assert "3 |" in table

@@ -8,15 +8,15 @@ layer: "storage"
 c4_level: "code"
 diataxis_type: "reference"
 traceability:
-  implements_brd: ["BRD-SETVE-001"]
+  implements_brd: ["BRD-STEVE-001"]
   governed_by_adr: ["ADR-0001"]
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: []
 code_references:
-  - "setve/adapters/io_uring.py"
-  - "setve/adapters/posix.py"
-  - "setve/adapters/factory.py"
-  - "setve/adapters/base.py"
+  - "steve/adapters/io_uring.py"
+  - "steve/adapters/posix.py"
+  - "steve/adapters/factory.py"
+  - "steve/adapters/base.py"
 test_references:
   - "tests/test_posix_io.py"
   - "tests/test_factory.py"
@@ -31,10 +31,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. Module Overview & Class Architecture
 
-`LLD-ADAPTER-001` specifies the concrete implementation of the `IoUringTargetAdapter`, which implements the asynchronous `TargetAdapter` base interface defined in `HLD-SETVE-001`. The module wraps Linux `io_uring` kernel submission and completion rings (`SQ`/`CQ`) via low-level `liburing` bindings, executing non-blocking, zero-copy Direct I/O operations without acquiring the Python Global Interpreter Lock (GIL) or invoking host system call context switches during hot-loop processing.
-
-### 1.1 Class Inheritance & Dependencies
-
+`LLD-ADAPTER-001` specifies the concrete implementation of the `IoUringTargetAdapter`, which implements the asynchronous `TargetAdapter` base interface defined in `HLD-STEVE-001`. The module wraps Linux `io_uring` kernel submission and completion rings (`SQ`/`CQ`) via low-level `liburing` bindings, executing non-blocking, zero-copy Direct I/O operations without acquiring the Python Global Interpreter Lock (GIL) or invoking host system call context switches during hot-loop processing.
 
 ### 1.1 Adapter Factory Strategy Architecture
 
@@ -79,17 +76,15 @@ To satisfy the zero-copy Direct I/O mandates governed by **ADR-0001**, all buffe
 
 Direct I/O requests (`O_DIRECT`) issued through `io_uring` fail with `-EINVAL` if memory addresses, block offsets, or operation lengths violate block boundary constraints.
 
-
-```	ext``
-   Memory Address (DirectBuffer.address)
-   ├── 4096-Byte Page Boundary Assertion: address % 4096 == 0
-   └── 64-Byte AVX-512 Alignment Assertion: address % 64 == 0
-
-   File Offset & Length
-   ├── File Offset Assertion: offset % 4096 == 0
-   └── Transfer Length Assertion: len(view) % 4096 == 0
-
 ```text
+Memory Address (DirectBuffer.address)
+├── 4096-Byte Page Boundary Assertion: address % 4096 == 0
+└── 64-Byte AVX-512 Alignment Assertion: address % 64 == 0
+
+File Offset & Length
+├── File Offset Assertion: offset % 4096 == 0
+└── Transfer Length Assertion: len(view) % 4096 == 0
+```
 
 * **Page Alignment Formula:**
   $$\text{Address}_{\text{Buffer}} \equiv 0 \pmod{4096}$$
@@ -98,9 +93,7 @@ Direct I/O requests (`O_DIRECT`) issued through `io_uring` fail with `-EINVAL` i
 
 ### 2.2 Submission & Completion Ring Execution Lifecycle
 
-
-```
-
+```text
 [ Worker Event Loop ]
 │
 ├── 1. Acquire SQE (io_uring_get_sqe)
@@ -120,7 +113,6 @@ Direct I/O requests (`O_DIRECT`) issued through `io_uring` fail with `-EINVAL` i
 ├── 5. Drain CQEs (io_uring_cqe_seen)
 │
 └── 6. Resolve pending asyncio.Future without allocation
-
 ```
 
 ---
@@ -137,15 +129,15 @@ To prevent worker processes from stalling while waiting for kernel I/O completio
 
 ---
 
-## 4. Domain Exception Hierarchy & OS errno Mapping (`setve/exceptions.py`)
+## 4. Domain Exception Hierarchy & OS errno Mapping (`steve/exceptions.py`)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 SETVE DOMAIN EXCEPTION TREE                                     │
+│                                 STEVE DOMAIN EXCEPTION TREE                                     │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                 │
 │                                  ┌──────────────────────────┐                                   │
-│                                  │        SetveError        │ (Base Domain Exception)           │
+│                                  │        SteveError        │ (Base Domain Exception)           │
 │                                  └─────────────┬────────────┘                                   │
 │                                                │                                                │
 │         ┌──────────────────────┬───────────────┴───────────────┬──────────────────────┐         │
@@ -168,7 +160,7 @@ To prevent worker processes from stalling while waiting for kernel I/O completio
 
 ### 4.1 System Call `errno` Mapping Matrix
 
-| OS `errno` Code | Constant | Mapped SETVE Domain Exception | Action Triggered |
+| OS `errno` Code | Constant | Mapped STEVE Domain Exception | Action Triggered |
 | :--- | :--- | :--- | :--- |
 | `errno.EINVAL` (22) | Invalid Argument | `MisalignedOffsetError` | Re-assert $4096\text{B}$ sector boundary |
 | `errno.ENOSPC` (28) | No Space Left | `StorageExhaustedError` | Trigger tiering / cleanup workflow |
@@ -180,7 +172,7 @@ To prevent worker processes from stalling while waiting for kernel I/O completio
 
 ---
 
-## 5. Production Concrete Implementation (`setve/adapters/io_uring.py`)
+## 5. Production Concrete Implementation (`steve/adapters/io_uring.py`)
 
 ```python
 """Linux io_uring Target Adapter Implementation for Zero-Copy Direct I/O."""
@@ -204,7 +196,7 @@ from liburing import (  # type: ignore[import-untyped]
     io_uring_wait_cqe,
 )
 
-from setve.adapters.base import (
+from steve.adapters.base import (
     AdapterCapabilities,
     AdapterError,
     DirectBuffer,
@@ -264,9 +256,7 @@ class IoUringTargetAdapter(TargetAdapter):
                 f"File offset {offset} is not a multiple of {ALIGNMENT_BLOCK_SIZE} bytes"
             )
 
-    async def write(
-        self, target: TargetDescriptor, offset: int, payload: DirectBuffer
-    ) -> int:
+    async def write(self, target: TargetDescriptor, offset: int, payload: DirectBuffer) -> int:
         """Perform an asynchronous zero-copy write via io_uring submission ring."""
         if not self._initialized:
             raise AdapterError("Adapter not initialized. Call initialize() first.")
@@ -307,9 +297,7 @@ class IoUringTargetAdapter(TargetAdapter):
         finally:
             os.close(fd)
 
-    async def read(
-        self, target: TargetDescriptor, offset: int, buffer: DirectBuffer
-    ) -> int:
+    async def read(self, target: TargetDescriptor, offset: int, buffer: DirectBuffer) -> int:
         """Perform an asynchronous zero-copy read via io_uring submission ring."""
         raise NotImplementedError("Read implementation follows identical SQE/CQE prep pattern.")
 
@@ -325,5 +313,4 @@ class IoUringTargetAdapter(TargetAdapter):
         if self._initialized:
             io_uring_queue_exit(self._ring)
             self._initialized = False
-
 ```

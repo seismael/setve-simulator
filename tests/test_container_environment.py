@@ -9,18 +9,18 @@ import time
 
 import pytest
 
-from setve.adapters.factory import AdapterFactory
+from steve.adapters.factory import AdapterFactory
 from usecases.usecase_03_prometheus_monitoring import run_prometheus_monitoring
 from usecases.usecase_05_ai_vector_s3 import run_ai_vector_s3_simulation
 
 
 def test_container_environment_variable_overrides() -> None:
-    """Verify that SETVE respects containerized environment variables."""
-    os.environ["SETVE_ENV"] = "container"
-    os.environ["SETVE_S3_ENDPOINT"] = "http://minio:9000"
-    os.environ["SETVE_S3_BUCKET"] = "setve-test-bucket"
+    """Verify that STEVE respects containerized environment variables."""
+    os.environ["STEVE_ENV"] = "container"
+    os.environ["STEVE_S3_ENDPOINT"] = "http://minio:9000"
+    os.environ["STEVE_S3_BUCKET"] = "steve-test-bucket"
 
-    s3_adapter = AdapterFactory.create("s3://setve-test-bucket/model_checkpoint")
+    s3_adapter = AdapterFactory.create("s3://steve-test-bucket/model_checkpoint")
     assert s3_adapter is not None
     assert not s3_adapter.capabilities().supports_direct_io
     assert s3_adapter.capabilities().supports_async_cancellation
@@ -41,7 +41,7 @@ async def test_container_s3_and_vector_usecase_execution() -> None:
 
 
 def test_live_prometheus_server_and_client_scrape() -> None:
-    """Verify live Prometheus HTTP server responds with valid exposition text on port 9100."""
+    """Verify live Prometheus HTTP server responds with valid exposition text on port 9188."""
     port = 9188
     # Start server in background thread
     server_thread = threading.Thread(
@@ -73,5 +73,5 @@ def test_live_prometheus_server_and_client_scrape() -> None:
             pass
 
     server_thread.join(timeout=6.0)
-    assert "setve_cluster_ops_total" in body
-    assert "setve_cluster_bytes_total" in body
+    assert "steve_cluster_ops_total" in body
+    assert "steve_cluster_bytes_total" in body

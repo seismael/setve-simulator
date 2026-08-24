@@ -8,13 +8,13 @@ layer: "storage"
 c4_level: "component"
 diataxis_type: "explanation"
 traceability:
-  implements_brd: ["BRD-SETVE-001"]
+  implements_brd: ["BRD-STEVE-001"]
   governed_by_adr: []
-  parent_hld: "HLD-SETVE-001"
+  parent_hld: "HLD-STEVE-001"
   child_llds: ["LLD-ADAPTER-001"]
 code_references:
-  - "setve/adapters/io_uring.py"
-  - "setve/adapters/posix.py"
+  - "steve/adapters/io_uring.py"
+  - "steve/adapters/posix.py"
 test_references:
   - "tests/test_posix_io.py"
   - "tests/benchmark_adapters.py"
@@ -27,7 +27,7 @@ last_validated_date: "2026-08-05"
 
 ## 1. Context & Problem Statement
 
-**BRD-SETVE-001** mandates ≥ 8 GB/s sustained throughput per client node. In a
+**BRD-STEVE-001** mandates ≥ 8 GB/s sustained throughput per client node. In a
 standard Python runtime, three bottlenecks prevent this:
 
 | # | Bottleneck | Impact |
@@ -88,7 +88,7 @@ Use `io_uring` ring buffers (SQ/CQ) over `O_DIRECT` via native `liburing` FFI.
 
 ### Justification
 
-1. **Meets BRD-SETVE-001 throughput target.** Only mechanism sustaining > 8 GB/s in
+1. **Meets BRD-STEVE-001 throughput target.** Only mechanism sustaining > 8 GB/s in
    Python with < 1% control-plane CPU overhead per core.
 2. **Eliminates GIL contention.** Lock-free SQ/CQ rings shared between user memory
    and kernel; single core-pinned `uvloop` process keeps 1 000+ I/O ops in flight.

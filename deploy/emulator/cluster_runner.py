@@ -9,12 +9,12 @@ import os
 import tempfile
 import time
 
-from setve.logging import configure_logging, get_logger
-from setve.orchestrator.cluster import DeterministicShardGenerator, WorkerShardSpec
-from setve.orchestrator.sync import ClusterSyncServicer
-from setve.payload.mutator import PySIMDPayloadMutator
-from setve.validation.metric_collector import MetricCollector
-from setve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
+from steve.logging import configure_logging, get_logger
+from steve.orchestrator.cluster import DeterministicShardGenerator, WorkerShardSpec
+from steve.orchestrator.sync import ClusterSyncServicer
+from steve.payload.mutator import PySIMDPayloadMutator
+from steve.validation.metric_collector import MetricCollector
+from steve.validation.reporter import ClusterTelemetrySummary, WorkerTelemetryResult
 
 
 def run_simulated_node_worker(
@@ -26,7 +26,7 @@ def run_simulated_node_worker(
     result_queue: mp.Queue[WorkerTelemetryResult],
 ) -> None:
     """Simulates a core-pinned worker executing on a named cluster node."""
-    logger = get_logger("setve.node.worker", node_id=node_id, core_id=core_id)
+    logger = get_logger("steve.node.worker", node_id=node_id, core_id=core_id)
     collector = MetricCollector()
     mutator = PySIMDPayloadMutator(buffer_size=shard_spec.block_size_bytes)
 
@@ -83,7 +83,7 @@ class LocalClusterEmulator:
         self.node_count = node_count
         self.cores_per_node = cores_per_node
         self.total_cores = node_count * cores_per_node
-        self.logger = get_logger("setve.cluster.emulator")
+        self.logger = get_logger("steve.cluster.emulator")
 
     async def run_emulated_cluster(
         self,
@@ -100,7 +100,7 @@ class LocalClusterEmulator:
         )
 
         nodes = [(f"node-{i:02d}", self.cores_per_node) for i in range(self.node_count)]
-        target_bps = target_gbps * (1024**3)
+        target_bps = int(target_gbps * (1024**3))
 
         # 1. Distributed deterministic shard allocation
         shards = DeterministicShardGenerator.generate_cluster_shards(
@@ -189,7 +189,7 @@ class LocalClusterEmulator:
 
 def main() -> None:
     """CLI entrypoint for local cluster emulation."""
-    parser = argparse.ArgumentParser(description="SETVE Local Multi-Node Cluster Emulator")
+    parser = argparse.ArgumentParser(description="STEVE Local Multi-Node Cluster Emulator")
     parser.add_argument("--nodes", type=int, default=4, help="Number of simulated cluster nodes")
     parser.add_argument("--cores-per-node", type=int, default=2, help="Cores per node")
     parser.add_argument("--duration", type=float, default=2.0, help="Test duration in seconds")
@@ -204,7 +204,7 @@ def main() -> None:
 
     total_c = args.nodes * args.cores_per_node
     print("\n" + "=" * 80)
-    print(f"  SETVE LOCAL CLUSTER SIMULATION REPORT ({args.nodes} Nodes | {total_c} Cores)")
+    print(f"  STEVE LOCAL CLUSTER SIMULATION REPORT ({args.nodes} Nodes | {total_c} Cores)")
     print("=" * 80)
     print(f"[*] Total Ops:        {summary.total_ops:,} ops")
     print(f"[*] Transferred:      {summary.total_bytes / (1024**2):.2f} MB")

@@ -1,6 +1,6 @@
 """Comprehensive End-to-End Manual Environment Validation & Diagnostic Runner.
 
-Executes all 10 SETVE use cases, local cluster simulation, Prometheus HTTP scraping,
+Executes all 10 STEVE use cases, local cluster simulation, Prometheus HTTP scraping,
 and verifies zero-allocation and alignment diagnostics live on the local environment.
 """
 
@@ -15,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-from setve.logging import configure_logging, get_logger
+from steve.logging import configure_logging, get_logger
 from usecases.usecase_03_prometheus_monitoring import run_prometheus_monitoring
 
 
@@ -48,10 +48,10 @@ def run_command_capture(
 
 async def main() -> int:
     configure_logging()
-    logger = get_logger("setve.audit.manual")
+    logger = get_logger("steve.audit.manual")
     repo_root = Path(__file__).resolve().parent.parent
 
-    log_header("SETVE FULL ENVIRONMENT AUDIT & END-TO-END MANUAL VALIDATION")
+    log_header("STEVE FULL ENVIRONMENT AUDIT & END-TO-END MANUAL VALIDATION")
     logger.info("Starting complete environment validation suite")
     print(f"[*] Python Runtime:     {sys.version.split()[0]} ({sys.platform})")
     print(f"[*] Repository Path:    {repo_root}")
@@ -151,7 +151,7 @@ async def main() -> int:
             resp = conn.getresponse()
             if resp.status == 200:
                 body = resp.read().decode("utf-8")
-                if "setve_cluster_ops_total" in body:
+                if "steve_cluster_ops_total" in body:
                     prom_scrape_ok = True
                     print(
                         f"[+] Live HTTP /metrics Scrape OK on port {test_port} ({len(body)} bytes)"
@@ -174,7 +174,7 @@ async def main() -> int:
     )
 
     # -------------------------------------------------------------
-    # 4. Automated Test Suite (All 61 Tests)
+    # 4. Automated Test Suite (All 62 Tests)
     # -------------------------------------------------------------
     log_header("PHASE 4: AUTOMATED TEST SUITE EXECUTION")
     pytest_cmd = [uv_bin, "run", "pytest", "tests/", "-v"]
@@ -183,12 +183,12 @@ async def main() -> int:
         "Pytest Full Suite",
         cwd=str(repo_root),
     )
-    print(f"[*] Pytest 61 Tests: {'PASS' if pytest_success else 'FAIL'} in {pytest_dur:.2f}s")
+    print(f"[*] Pytest 62 Tests: {'PASS' if pytest_success else 'FAIL'} in {pytest_dur:.2f}s")
     if not pytest_success:
         print(f"    [!] Pytest error details:\n{pytest_out}")
     results.append(
         {
-            "name": "Full Pytest Suite (61 tests)",
+            "name": "Full Pytest Suite (62 tests)",
             "passed": pytest_success,
             "duration": pytest_dur,
             "output": pytest_out,
@@ -198,7 +198,7 @@ async def main() -> int:
     # -------------------------------------------------------------
     # Summary Table
     # -------------------------------------------------------------
-    log_header("SETVE END-TO-END AUDIT SUMMARY MATRIX")
+    log_header("STEVE END-TO-END AUDIT SUMMARY MATRIX")
     print(f"{'Verification Target':<45} | {'Status':<8} | {'Duration'}")
     print("-" * 70)
     all_passed = True

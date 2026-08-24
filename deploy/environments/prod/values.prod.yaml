@@ -1,4 +1,4 @@
-# Production Hyperscale Environment Configuration for SETVE Cluster
+# Production Hyperscale Environment Configuration for STEVE Cluster
 # Target: >= 1 TB/s Multi-Node Stress Testing
 
 global:
@@ -16,7 +16,7 @@ master:
 
 worker:
   nodeSelector:
-    setve.io/performance-tier: "baremetal-nvme-sriov"
+    steve.io/performance-tier: "baremetal-nvme-sriov"
   tolerations:
     - key: "performance"
       operator: "Equal"

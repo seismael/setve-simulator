@@ -12,15 +12,15 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.adapters.base import TargetDescriptor  # noqa: E402
-from setve.adapters.factory import AdapterFactory  # noqa: E402
-from setve.payload.buffer_pool import BufferPool  # noqa: E402
-from setve.validation.metric_collector import MetricCollector  # noqa: E402
+from steve.adapters.base import TargetDescriptor  # noqa: E402
+from steve.adapters.factory import AdapterFactory  # noqa: E402
+from steve.payload.buffer_pool import BufferPool  # noqa: E402
+from steve.validation.metric_collector import MetricCollector  # noqa: E402
 
 
 async def run_ai_vector_s3_simulation(
@@ -33,7 +33,7 @@ async def run_ai_vector_s3_simulation(
 ) -> int:
     """Execute asynchronous Vector DB and S3 ingestion simulations."""
     print("=" * 80)
-    print("  SETVE USE CASE 05: AI Vector Embeddings & S3 Object Store Ingestion")
+    print("  STEVE USE CASE 05: AI Vector Embeddings & S3 Object Store Ingestion")
     print("=" * 80)
 
     # 1. Vector Database Ingestion & Query Simulation
@@ -160,7 +160,7 @@ async def run_ai_vector_s3_simulation(
 def main() -> int:
     """Parse CLI options and execute AI workload simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 05: Vector & S3 Ingestion Simulator"
+        description="STEVE Use Case 05: Vector & S3 Ingestion Simulator"
     )
     parser.add_argument(
         "--vector-ops",

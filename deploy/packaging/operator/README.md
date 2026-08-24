@@ -1,18 +1,18 @@
-# SETVE Kubernetes Operator Packaging (`deploy/packaging/operator/`)
+# STEVE Kubernetes Operator Packaging (`deploy/packaging/operator/`)
 
-Declarative, event-driven Kubernetes Operator built with [Kopf](https://kopf.readthedocs.io/) for managing `SETVECluster` Custom Resources.
+Declarative, event-driven Kubernetes Operator built with [Kopf](https://kopf.readthedocs.io/) for managing `STEVECluster` Custom Resources.
 
 ---
 
-## Custom Resource Definition (`SETVECluster`)
-Located at `crds/setvecluster-crd.yaml`.
+## Custom Resource Definition (`STEVECluster`)
+Located at `crds/stevecluster-crd.yaml`.
 
 ```yaml
-apiVersion: setve.io/v1alpha1
-kind: SETVECluster
+apiVersion: steve.io/v1alpha1
+kind: STEVECluster
 metadata:
   name: nvme-storage-stress
-  namespace: setve-system
+  namespace: steve-system
 spec:
   nodeCount: 16
   coresPerNode: 16

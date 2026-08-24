@@ -1,4 +1,4 @@
-"""SETVE Use Case 08: Distributed Fault-Tolerance, Node Eviction & Chaos Engineering.
+"""STEVE Use Case 08: Distributed Fault-Tolerance, Node Eviction & Chaos Engineering.
 
 Simulates distributed cluster resilience under dynamic node failure:
 1. Provisions initial cluster topology (e.g., 16 nodes, 128 cores).
@@ -11,13 +11,12 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-
-from setve.orchestrator.cluster import DeterministicShardGenerator  # noqa: E402
+from steve.orchestrator.cluster import DeterministicShardGenerator  # noqa: E402
 
 
 def calculate_hash_uniformity(seeds: list[int], num_buckets: int = 16) -> tuple[float, str]:
@@ -44,7 +43,7 @@ def run_chaos_simulation(
 ) -> int:
     """Execute distributed node failure and dynamic shard rebalancing simulation."""
     print("=" * 80)
-    print("  SETVE USE CASE 08: Distributed Chaos Engineering & Shard Rebalancing")
+    print("  STEVE USE CASE 08: Distributed Chaos Engineering & Shard Rebalancing")
     print("=" * 80)
 
     total_target_bytes = total_target_size_gb * 1024 * 1024 * 1024
@@ -159,7 +158,7 @@ def run_chaos_simulation(
 def main() -> int:
     """Parse CLI options and execute chaos simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 08: Distributed Chaos Engineering & Shard Rebalancing"
+        description="STEVE Use Case 08: Distributed Chaos Engineering & Shard Rebalancing"
     )
     parser.add_argument(
         "--nodes",

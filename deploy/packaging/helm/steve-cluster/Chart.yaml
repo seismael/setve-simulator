@@ -1,0 +1,18 @@
+apiVersion: v2
+name: steve-cluster
+description: Storage, Telemetry, Engine, Verification, and Evaluation (STEVE) Helm Chart for Dedicated Bare-Metal Kubernetes
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+keywords:
+  - storage
+  - benchmark
+  - load-generation
+  - nvme
+  - telemetry
+  - prometheus
+home: https://github.com/seismael/steve-simulator
+sources:
+  - https://github.com/seismael/steve-simulator
+maintainers:
+  - name: STEVE Core Team

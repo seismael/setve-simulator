@@ -2,7 +2,7 @@
 
 import pytest
 
-from setve.payload.mutator import PySIMDPayloadMutator
+from steve.payload.mutator import PySIMDPayloadMutator
 
 
 def test_mutator_slice_bounds() -> None:

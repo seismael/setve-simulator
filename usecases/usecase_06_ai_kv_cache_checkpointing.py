@@ -1,4 +1,4 @@
-"""SETVE Use Case 06: AI LLM KV-Cache & Model Checkpointing Simulation.
+"""STEVE Use Case 06: AI LLM KV-Cache & Model Checkpointing Simulation.
 
 Simulates heterogeneous AI inference and training workloads:
 1. Prefill Phase: High-bandwidth sequential prompt ingestion (1 MB chunks).
@@ -14,16 +14,16 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.adapters.base import TargetDescriptor  # noqa: E402
-from setve.adapters.factory import AdapterFactory  # noqa: E402
-from setve.payload.buffer_pool import BufferPool  # noqa: E402
-from setve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
-from setve.validation.metric_collector import MetricCollector  # noqa: E402
+from steve.adapters.base import TargetDescriptor  # noqa: E402
+from steve.adapters.factory import AdapterFactory  # noqa: E402
+from steve.payload.buffer_pool import BufferPool  # noqa: E402
+from steve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
+from steve.validation.metric_collector import MetricCollector  # noqa: E402
 
 
 async def run_ai_kv_cache_simulation(
@@ -35,7 +35,7 @@ async def run_ai_kv_cache_simulation(
 ) -> int:
     """Execute multi-phase AI KV-cache prefill, decode, and checkpointing load."""
     print("=" * 80)
-    print("  SETVE USE CASE 06: AI LLM KV-Cache & Model Checkpointing Simulation")
+    print("  STEVE USE CASE 06: AI LLM KV-Cache & Model Checkpointing Simulation")
     print("=" * 80)
 
     cleanup_tmp = False
@@ -163,7 +163,7 @@ async def run_ai_kv_cache_simulation(
 def main() -> int:
     """Parse CLI options and execute AI KV-cache simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 06: AI LLM KV-Cache & Model Checkpointing Simulation"
+        description="STEVE Use Case 06: AI LLM KV-Cache & Model Checkpointing Simulation"
     )
     parser.add_argument(
         "--prefill-mb",

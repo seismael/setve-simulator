@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from setve.adapters.base import AlignmentError, DirectBuffer, TargetDescriptor
-from setve.adapters.posix import PosixDirectIOAdapter
+from steve.adapters.base import AlignmentError, DirectBuffer, TargetDescriptor
+from steve.adapters.posix import PosixDirectIOAdapter
 
 
 @pytest.mark.asyncio

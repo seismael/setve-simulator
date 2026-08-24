@@ -1,18 +1,20 @@
-"""Kubernetes Kopf Operator for SETVECluster CRD Lifecycle Management."""
+"""Kubernetes Kopf Operator for STEVECluster CRD Lifecycle Management."""
+
+from __future__ import annotations
 
 import logging
 from typing import Any
 
-logger = logging.getLogger("setve.operator")
+logger = logging.getLogger("steve.operator")
 
 try:
-    import kopf  # type: ignore[import-untyped, import-not-found]
+    import kopf
 except ImportError:
-    kopf = None  # type: ignore[assignment]
+    kopf = None
 
 
-def reconcile_setve_cluster(spec: dict[str, Any], name: str, namespace: str) -> dict[str, Any]:
-    """Pure reconciliation logic translating SETVECluster spec into workload manifests."""
+def reconcile_steve_cluster(spec: dict[str, Any], name: str, namespace: str) -> dict[str, Any]:
+    """Pure reconciliation logic translating STEVECluster spec into workload manifests."""
     target_endpoint = spec.get("targetEndpoint", "posix://local")
     target_throughput_gbps = spec.get("targetThroughputGbps", 100)
     block_size_bytes = spec.get("blockSizeBytes", 1048576)
@@ -24,7 +26,7 @@ def reconcile_setve_cluster(spec: dict[str, Any], name: str, namespace: str) -> 
     max_replicas = scaling_policy.get("maxReplicas", 32)
 
     logger.info(
-        f"Reconciling SETVECluster '{name}' in '{namespace}' "
+        f"Reconciling STEVECluster '{name}' in '{namespace}' "
         f"[Target: {target_endpoint}, Throughput: {target_throughput_gbps} Gbps, "
         f"Scale: {min_replicas}..{max_replicas}]"
     )
@@ -36,28 +38,28 @@ def reconcile_setve_cluster(spec: dict[str, Any], name: str, namespace: str) -> 
         "metadata": {
             "name": f"{name}-master",
             "namespace": namespace,
-            "labels": {"app.kubernetes.io/name": "setve-master", "setve.io/cluster": name},
+            "labels": {"app.kubernetes.io/name": "steve-master", "steve.io/cluster": name},
         },
         "spec": {
             "replicas": 1,
-            "selector": {"matchLabels": {"setve.io/cluster": name, "role": "master"}},
+            "selector": {"matchLabels": {"steve.io/cluster": name, "role": "master"}},
             "template": {
-                "metadata": {"labels": {"setve.io/cluster": name, "role": "master"}},
+                "metadata": {"labels": {"steve.io/cluster": name, "role": "master"}},
                 "spec": {
                     "containers": [
                         {
                             "name": "master",
-                            "image": "setve-master:latest",
+                            "image": "steve-master:latest",
                             "env": [
-                                {"name": "SETVE_RUN_ID", "value": name},
-                                {"name": "SETVE_TARGET_URI", "value": target_endpoint},
+                                {"name": "STEVE_RUN_ID", "value": name},
+                                {"name": "STEVE_TARGET_URI", "value": target_endpoint},
                                 {
-                                    "name": "SETVE_THROUGHPUT_GBPS",
+                                    "name": "STEVE_THROUGHPUT_GBPS",
                                     "value": str(target_throughput_gbps),
                                 },
-                                {"name": "SETVE_BLOCK_SIZE", "value": str(block_size_bytes)},
-                                {"name": "SETVE_ENTROPY_RATIO", "value": str(entropy_ratio)},
-                                {"name": "SETVE_DURATION_SEC", "value": str(duration_seconds)},
+                                {"name": "STEVE_BLOCK_SIZE", "value": str(block_size_bytes)},
+                                {"name": "STEVE_ENTROPY_RATIO", "value": str(entropy_ratio)},
+                                {"name": "STEVE_DURATION_SEC", "value": str(duration_seconds)},
                             ],
                             "ports": [{"containerPort": 50051, "name": "grpc-sync"}],
                         }
@@ -74,7 +76,7 @@ def reconcile_setve_cluster(spec: dict[str, Any], name: str, namespace: str) -> 
         "metadata": {
             "name": f"{name}-autoscaler",
             "namespace": namespace,
-            "labels": {"setve.io/cluster": name},
+            "labels": {"steve.io/cluster": name},
         },
         "spec": {
             "scaleTargetRef": {"name": f"{name}-worker"},
@@ -101,16 +103,16 @@ def reconcile_setve_cluster(spec: dict[str, Any], name: str, namespace: str) -> 
 
 if kopf is not None:
 
-    @kopf.on.create("setve.io", "v1alpha1", "setveclusters")  # type: ignore[misc]
+    @kopf.on.create("steve.io", "v1alpha1", "steveclusters")
     def create_fn(
         spec: dict[str, Any], name: str, namespace: str, logger: Any, **kwargs: Any
     ) -> dict[str, Any]:
-        """Kopf create handler for SETVECluster Custom Resources."""
-        return reconcile_setve_cluster(spec, name, namespace)
+        """Kopf create handler for STEVECluster Custom Resources."""
+        return reconcile_steve_cluster(spec, name, namespace)
 
-    @kopf.on.update("setve.io", "v1alpha1", "setveclusters")  # type: ignore[misc]
+    @kopf.on.update("steve.io", "v1alpha1", "steveclusters")
     def update_fn(
         spec: dict[str, Any], name: str, namespace: str, logger: Any, **kwargs: Any
     ) -> dict[str, Any]:
-        """Kopf update handler for SETVECluster Custom Resources."""
-        return reconcile_setve_cluster(spec, name, namespace)
+        """Kopf update handler for STEVECluster Custom Resources."""
+        return reconcile_steve_cluster(spec, name, namespace)

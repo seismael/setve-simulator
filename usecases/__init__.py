@@ -1,4 +1,4 @@
-"""SETVE Production Use Cases Package."""
+"""STEVE Production Use Cases Package."""
 
 from usecases.usecase_01_storage_stress import run_storage_stress
 from usecases.usecase_02_dedup_compression import run_dedup_compression_bench

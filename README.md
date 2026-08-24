@@ -1,17 +1,17 @@
-# SETVE: Universal Simulation & Telemetry Validation Engine
+# STEVE: Storage, Telemetry, Engine, Verification, and Evaluation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version: v0.2.0](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/seismael/setve-simulator/releases)
-[![Build Status](https://github.com/seismael/setve-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
-[![Doc Graph](https://github.com/seismael/setve-simulator/actions/workflows/doc_graph_check.yml/badge.svg)](https://github.com/seismael/setve-simulator/actions)
+[![Version: v0.2.0](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/seismael/steve-simulator/releases)
+[![Build Status](https://github.com/seismael/steve-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/seismael/steve-simulator/actions)
+[![Doc Graph](https://github.com/seismael/steve-simulator/actions/workflows/doc_graph_check.yml/badge.svg)](https://github.com/seismael/steve-simulator/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checking: mypy](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
 
 
-**SETVE** is a platform-agnostic, multi-gigabyte-per-second load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems ($\ge 8\text{ GB/s}$ per node to multi-TB/s clusters).
+**STEVE** (Storage, Telemetry, Engine, Verification, and Evaluation) is a platform-agnostic, multi-gigabyte-per-second load generation and telemetry verification engine engineered to stress-test high-performance storage and data-plane systems from single nodes to multi-TB/s clusters.
 
-Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** design patterns, SETVE completely decouples its distributed orchestration control plane from zero-copy, hardware-aligned data plane execution kernels.
+Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** design patterns, STEVE completely decouples its distributed orchestration control plane from zero-copy, hardware-aligned data plane execution kernels.
 
 ---
 
@@ -21,11 +21,11 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 - **[docs/DOCUMENTATION.md](file:///c:/dev/projects/setve-simulator/docs/DOCUMENTATION.md)**: Dual-indexed documentation taxonomy (Arc42 / C4 / Diátaxis / IEEE 42010), frontmatter schemas, and $\text{BRD} \rightarrow \text{HLD} \rightarrow \text{ADR} \rightarrow \text{LLD}$ traceability DAG.
 
 ```text
-                                 [ BRD-SETVE-001 ]        [ BRD-DIST-001 ]
+                                 [ BRD-STEVE-001 ]        [ BRD-DIST-001 ]
                                          │                       │
                        ┌─────────────────┴───────────────────────┴─────────────────┐
                        ▼                                                           ▼
-                [ HLD-SETVE-001 ]                                           [ HLD-DIST-001 ]
+                [ HLD-STEVE-001 ]                                           [ HLD-DIST-001 ]
                        │                                                           │
           ┌────────────┼────────────┐                                 ┌────────────┴────────────┐
           ▼            ▼            ▼                                 ▼                         ▼
@@ -42,7 +42,7 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ┌───────────────────────────┐                ┌────────────────────────────┐   │
-│   │ SETVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
+│   │ STEVE Distributed Cluster │  Stress Load   │ System Under Test (SUT)    │   │
 │   │ (4-64 Core-Pinned Nodes)  │ ─────────────> │ (NVMe-oF / POSIX / S3 / DB)│   │
 │   └─────────────┬─────────────┘                └─────────────┬──────────────┘   │
 │                 │                                            │                  │
@@ -59,7 +59,7 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 SETVE 3-PLANE TOPOLOGY (C2)                              │
+│                                 STEVE 3-PLANE TOPOLOGY (C2)                              │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                          │
 │ 1. CONTROL PLANE (Master Orchestrator)                                                   │
@@ -82,7 +82,7 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 │                   v                                               v                      │
 │    ┌────────────────────────────────────────────────────────────────────────────────┐    │
 │    │ Dual-Source Telemetry Evaluator (Mathematical Skew Verification <= 0.1%)       │    │
-│    │ Export Formats: ASCII Matrix | Prometheus (/metrics) | Structured JSON          │
+│    │ Export Formats: ASCII Matrix | Prometheus (/metrics) | Structured JSON          │    │
 │    └────────────────────────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -127,7 +127,7 @@ Built with strict **Domain-Driven Design (DDD)** and **Gang of Four (GoF)** desi
 
 ## Distributed Horizontal Scaling & Multi-Node Cluster
 
-SETVE scales seamlessly from a single multi-core server to hundreds of bare-metal nodes using a **Shared-Nothing Distributed Architecture**:
+STEVE scales seamlessly from a single multi-core server to hundreds of bare-metal nodes using a **Shared-Nothing Distributed Architecture**:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -135,7 +135,7 @@ SETVE scales seamlessly from a single multi-core server to hundreds of bare-meta
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                 │
 │                           ┌──────────────────────────────────────────┐                          │
-│                           │      SETVE Master Orchestrator Node      │                          │
+│                           │      STEVE Master Orchestrator Node      │                          │
 │                           │   (Deterministic Sharding + gRPC Sync)   │                          │
 │                           └──────┬────────────────────────────┬──────┘                          │
 │                                  │ Phase 1 & 2 gRPC Barriers  │                                 │
@@ -193,7 +193,7 @@ All metrics measured via the comprehensive benchmark suite (`python tests/benchm
 ## Directory & Package Layout
 
 ```text
-setve/
+steve/
 ├── pyproject.toml             # Build specs, mypy --strict, ruff config
 ├── Makefile                   # Automation targets (lint, test, bench, docs)
 ├── deploy/                    # 3-Tier Enterprise Deployment & Infrastructure
@@ -212,7 +212,7 @@ setve/
 │   ├── build_doc_graph.py     # Dependency DAG JSON index generator
 │   ├── validate_deploy.py     # 3-tier deployment architecture validator
 │   └── run_full_manual_audit.py # Full end-to-end environment audit runner
-├── setve/                     # Core Python 3.12+ Source Engine
+├── steve/                     # Core Python 3.12+ Source Engine
 │   ├── adapters/              # Target storage drivers (POSIX, io_uring, S3, Vector)
 │   ├── payload/               # SIMD mutator, buffer pool, workload blueprints
 │   ├── orchestrator/          # Master controller, core-pinned worker, sync servicer
@@ -245,10 +245,10 @@ setve/
 pip install -e ".[dev]"
 
 # 2. Run static analysis and formatting quality gates
-ruff check setve/ tests/ scripts/ deploy/ usecases/
-ruff format --check setve/ tests/ scripts/ deploy/ usecases/
+ruff check steve/ tests/ scripts/ deploy/ usecases/
+ruff format --check steve/ tests/ scripts/ deploy/ usecases/
 
-# 3. Execute the comprehensive test suite (40 tests)
+# 3. Execute the comprehensive test suite (62 tests)
 pytest -v
 
 # 4. Run the multi-subsystem benchmark suite
@@ -266,25 +266,26 @@ python scripts/validate_docs.py
 python scripts/build_doc_graph.py
 ```
 
-
 ---
 
 ## Programmatic Usage Example
 
 ```python
-from setve.payload.blueprint import WorkloadBlueprint
-from setve.orchestrator.master import MultiCoreOrchestrator
+from steve.payload.blueprint import WorkloadBlueprint
+from steve.orchestrator.master import MultiCoreOrchestrator
 
 # 1. Define declarative simulation workload blueprint
-blueprint = WorkloadBlueprint.from_dict({
-    "run_id": "sim-production-stress-01",
-    "target_uri": "posix:///mnt/nvme/sim_data",
-    "block_size_bytes": 1048576,       # 1 MB block size
-    "entropy_ratio": 0.85,             # 85% randomized payload
-    "target_throughput_gbps": 100,     # Target 100 Gbps cluster aggregate
-    "duration_seconds": 10,
-    "global_seed": 9999,
-})
+blueprint = WorkloadBlueprint.from_dict(
+    {
+        "run_id": "sim-production-stress-01",
+        "target_uri": "posix:///mnt/nvme/sim_data",
+        "block_size_bytes": 1048576,  # 1 MB block size
+        "entropy_ratio": 0.85,  # 85% randomized payload
+        "target_throughput_gbps": 100,  # Target 100 Gbps cluster aggregate
+        "duration_seconds": 10,
+        "global_seed": 9999,
+    }
+)
 
 # 2. Instantiate and launch multi-core orchestrator
 orchestrator = MultiCoreOrchestrator()
@@ -301,7 +302,7 @@ print(summary.to_prometheus_metrics())
 
 ```text
 +==================================================================================+
-| SETVE SIMULATION & TELEMETRY REPORT: sim-production-stress-01                     |
+| STEVE SIMULATION & TELEMETRY REPORT: sim-production-stress-01                    |
 +==================================================================================+
 | Target URI:     posix:///mnt/nvme/sim_data                                       |
 | Total Cores:    8                                                                |
@@ -337,14 +338,13 @@ The [`usecases/`](file:///c:/dev/projects/setve-simulator/usecases/README.md) ca
 | **09. Multi-Tier Lifecycle** | [`usecases/usecase_09_storage_tiering_lifecycle.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_09_storage_tiering_lifecycle.py) | Models data aging across Hot NVMe $\rightarrow$ Warm Block $\rightarrow$ Cold S3. |
 | **10. Tail Micro-Burst Analysis** | [`usecases/usecase_10_tail_latency_microburst.py`](file:///c:/dev/projects/setve-simulator/usecases/usecase_10_tail_latency_microburst.py) | Injects $50\text{ms}$ $100\times$ traffic surges capturing $p_{99.9} / p_{99.99}$ HDR latency spikes. |
 
-
 ---
 
 ## Deployment & Infrastructure Topologies
 
-SETVE supports a comprehensive 3-tier enterprise deployment ecosystem documented in [`deploy/`](file:///c:/dev/projects/setve-simulator/deploy/README.md):
+STEVE supports a comprehensive 3-tier enterprise deployment ecosystem documented in [`deploy/`](file:///c:/dev/projects/setve-simulator/deploy/README.md):
 
-1. **Packaging Specs ([`deploy/packaging/`](file:///c:/dev/projects/setve-simulator/deploy/packaging))**: Multi-stage Linux Docker build (`deploy/packaging/docker/Dockerfile`), production Helm 3 chart (`deploy/packaging/helm/setve-cluster`), and Kopf Kubernetes CRD Operator (`deploy/packaging/operator/controller.py`).
+1. **Packaging Specs ([`deploy/packaging/`](file:///c:/dev/projects/setve-simulator/deploy/packaging))**: Multi-stage Linux Docker build (`deploy/packaging/docker/Dockerfile`), production Helm 3 chart (`deploy/packaging/helm/steve-cluster`), and Kopf Kubernetes CRD Operator (`deploy/packaging/operator/controller.py`).
 2. **Environment Overlays ([`deploy/environments/`](file:///c:/dev/projects/setve-simulator/deploy/environments/README.md))**: Progressive target tiers across `local` (`docker compose -f deploy/environments/local/docker-compose.yml up -d`), `dev` (Terraform IaaS), `staging` ($100\text{ Gbps}$ bare-metal), and `prod` ($\ge 1\text{ TB/s}$ hyperscale).
 3. **Local Cluster Emulator ([`deploy/emulator/`](file:///c:/dev/projects/setve-simulator/deploy/emulator/README.md))**: Multi-node distributed load generator simulator running core-pinned worker fleets with live gRPC barrier synchronization on local host infrastructure.
 
@@ -362,12 +362,9 @@ We welcome contributions from systems engineers, storage architects, and data-pl
 
 ## License & Copyright
 
-SETVE is distributed under the **[MIT License](file:///c:/dev/projects/setve-simulator/LICENSE)**.
+STEVE is distributed under the **[MIT License](file:///c:/dev/projects/setve-simulator/LICENSE)**.
 
 ```text
-Copyright (c) 2026 SETVE Contributors
+Copyright (c) 2026 STEVE Contributors
 Licensed under the MIT License. See LICENSE file for full details.
 ```
-
-
-

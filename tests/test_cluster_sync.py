@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from setve.orchestrator.sync import ClusterSyncServicer
+from steve.orchestrator.sync import ClusterSyncServicer
 
 
 @pytest.mark.asyncio

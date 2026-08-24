@@ -1,6 +1,6 @@
-# SETVE Container Packaging (`deploy/packaging/docker/`)
+# STEVE Container Packaging (`deploy/packaging/docker/`)
 
-Multi-stage, Linux-optimized Dockerfile recipe for the **Universal Simulation & Telemetry Validation Engine (SETVE)**.
+Multi-stage, Linux-optimized Dockerfile recipe for the **Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)**.
 
 ---
 
@@ -13,5 +13,5 @@ Multi-stage, Linux-optimized Dockerfile recipe for the **Universal Simulation & 
 
 ## Building the Image Manually
 ```bash
-docker build -t setve:latest -f deploy/packaging/docker/Dockerfile .
+docker build -t steve:latest -f deploy/packaging/docker/Dockerfile .
 ```

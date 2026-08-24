@@ -3,8 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from setve.orchestrator.master import MultiCoreOrchestrator
-from setve.payload.blueprint import WorkloadBlueprint
+from steve.orchestrator.master import MultiCoreOrchestrator
+from steve.payload.blueprint import WorkloadBlueprint
 
 
 def test_master_orchestrator_telemetry_aggregation() -> None:
@@ -41,10 +41,10 @@ def test_master_orchestrator_telemetry_aggregation() -> None:
 
         # Verify ASCII report table generation
         table = summary.format_table()
-        assert "SETVE SIMULATION & TELEMETRY REPORT" in table
+        assert "STEVE SIMULATION & TELEMETRY REPORT" in table
         assert "master-telemetry-test" in table
 
         # Verify Prometheus metric export
         prom = summary.to_prometheus_metrics()
-        assert "setve_cluster_ops_total" in prom
-        assert "setve_cluster_throughput_gbps" in prom
+        assert "steve_cluster_ops_total" in prom
+        assert "steve_cluster_throughput_gbps" in prom

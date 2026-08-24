@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SETVE Environment & Directory Bootstrap Generator."""
+"""STEVE Environment & Directory Bootstrap Generator."""
 
 from pathlib import Path
 
@@ -10,26 +10,27 @@ DIRECTORIES = [
     "docs/03-adr",
     "docs/04-lld/memory",
     "scripts",
-    "setve/adapters",
-    "setve/payload",
-    "setve/orchestrator",
-    "setve/validation",
+    "steve/adapters",
+    "steve/payload",
+    "steve/orchestrator",
+    "steve/validation",
     "tests",
 ]
 
 FILES = {
-    "setve/__init__.py": (
-        '"""SETVE: Universal Simulation & Telemetry Validation Engine."""\n__version__ = "0.1.0"\n'
+    "steve/__init__.py": (
+        '"""STEVE: Storage, Telemetry, Engine, Verification, and Evaluation."""\n'
+        '__version__ = "0.2.0"\n'
     ),
-    "setve/py.typed": "",
-    "setve/adapters/__init__.py": "",
-    "setve/payload/__init__.py": "",
-    "setve/orchestrator/__init__.py": "",
-    "setve/validation/__init__.py": "",
+    "steve/py.typed": "",
+    "steve/adapters/__init__.py": "",
+    "steve/payload/__init__.py": "",
+    "steve/orchestrator/__init__.py": "",
+    "steve/validation/__init__.py": "",
     "tests/__init__.py": "",
-    "docs/01-brd/data-plane/BRD-SETVE-001.md": """---
-id: "BRD-SETVE-001"
-title: "Universal High-Throughput Simulation & Telemetry Validation Engine (SETVE)"
+    "docs/01-brd/data-plane/BRD-STEVE-001.md": """---
+id: "BRD-STEVE-001"
+title: "Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)"
 type: "BRD"
 status: "APPROVED"
 domain: "data-plane"
@@ -42,11 +43,12 @@ traceability:
   parent_hld: null
   child_llds: []
 code_references: []
+test_references: []
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
 
-# BRD-SETVE-001: Universal High-Throughput Simulation & Telemetry Validation Engine
+# BRD-STEVE-001: Storage, Telemetry, Engine, Verification, and Evaluation
 
 ## 1. Executive Summary
 Provide continuous data generation and ingestion simulation at $\\ge 8\\text{ GB/s}$
@@ -62,12 +64,14 @@ layer: "storage"
 c4_level: "component"
 diataxis_type: "explanation"
 traceability:
-  implements_brd: ["BRD-SETVE-001"]
+  implements_brd: ["BRD-STEVE-001"]
   governed_by_adr: []
   parent_hld: null
   child_llds: []
 code_references:
-  - "setve/adapters/io_uring.py"
+  - "steve/adapters/io_uring.py"
+test_references:
+  - "tests/test_posix_io.py"
 owner: "@architecture-team"
 last_validated_date: "2026-08-05"
 ---
@@ -83,7 +87,7 @@ to avoid syscall overhead.
 
 def bootstrap() -> None:
     root = Path.cwd()
-    print(f"Initializing SETVE workspace in: {root}")
+    print(f"Initializing STEVE workspace in: {root}")
 
     for folder in DIRECTORIES:
         p = root / folder

@@ -1,6 +1,6 @@
-# SETVE Production Use Cases & Engineering Recipes
+# STEVE Production Use Cases & Engineering Recipes
 
-This directory contains standalone, production-ready scenario scripts showcasing the full architectural capability spectrum of the **Universal Simulation & Telemetry Validation Engine (SETVE)**.
+This directory contains standalone, production-ready scenario scripts showcasing the full architectural capability spectrum of the **Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)** engine.
 
 ---
 

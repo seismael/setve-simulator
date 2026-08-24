@@ -1,4 +1,4 @@
-"""SETVE Use Case 09: Multi-Tier Storage Lifecycle (Hot / Warm / Cold Demotion).
+"""STEVE Use Case 09: Multi-Tier Storage Lifecycle (Hot / Warm / Cold Demotion).
 
 Simulates automated data progression across heterogeneous storage tiers:
 1. Hot Tier (NVMe / POSIX Direct I/O): 4 KB random read/write active working set.
@@ -13,16 +13,16 @@ import tempfile
 import time
 from pathlib import Path
 
-# Ensure setve package is on sys.path
+# Ensure steve package is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from setve.adapters.base import TargetDescriptor  # noqa: E402
-from setve.adapters.factory import AdapterFactory  # noqa: E402
-from setve.payload.buffer_pool import BufferPool  # noqa: E402
-from setve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
-from setve.validation.metric_collector import MetricCollector  # noqa: E402
+from steve.adapters.base import TargetDescriptor  # noqa: E402
+from steve.adapters.factory import AdapterFactory  # noqa: E402
+from steve.payload.buffer_pool import BufferPool  # noqa: E402
+from steve.payload.mutator import PySIMDPayloadMutator  # noqa: E402
+from steve.validation.metric_collector import MetricCollector  # noqa: E402
 
 
 async def run_storage_tiering_simulation(
@@ -33,7 +33,7 @@ async def run_storage_tiering_simulation(
 ) -> int:
     """Execute multi-tier storage lifecycle simulation."""
     print("=" * 80)
-    print("  SETVE USE CASE 09: Multi-Tier Storage Lifecycle (Hot/Warm/Cold)")
+    print("  STEVE USE CASE 09: Multi-Tier Storage Lifecycle (Hot/Warm/Cold)")
     print("=" * 80)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -162,7 +162,7 @@ async def run_storage_tiering_simulation(
 def main() -> int:
     """Parse CLI options and run storage tiering simulation."""
     parser = argparse.ArgumentParser(
-        description="SETVE Use Case 09: Multi-Tier Storage Lifecycle (Hot/Warm/Cold)"
+        description="STEVE Use Case 09: Multi-Tier Storage Lifecycle (Hot/Warm/Cold)"
     )
     parser.add_argument(
         "--hot-ops",

@@ -1,4 +1,4 @@
-# Multi-Stage High-Performance Dockerfile for SETVE
+# Multi-Stage High-Performance Dockerfile for STEVE
 # Stage 1: Build & Dependency Resolution
 FROM python:3.12-slim AS builder
 
@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml /build/
-COPY setve/ /build/setve/
+COPY steve/ /build/steve/
 
 RUN uv pip install --no-cache .
 
@@ -29,7 +29,7 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    SETVE_ENV=container
+    STEVE_ENV=container
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnuma-dev \
@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY setve/ /app/setve/
+COPY steve/ /app/steve/
 COPY usecases/ /app/usecases/
 COPY deploy/packaging/docker/entrypoint.sh /app/entrypoint.sh
 

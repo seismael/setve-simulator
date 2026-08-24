@@ -1,6 +1,6 @@
-# SETVE Enterprise Deployment & Infrastructure Architecture
+# STEVE Enterprise Deployment & Infrastructure Architecture
 
-This directory houses the unified deployment and infrastructure ecosystem for the **Universal Simulation & Telemetry Validation Engine (SETVE)**.
+This directory houses the unified deployment and infrastructure ecosystem for the **Storage, Telemetry, Engine, Verification, and Evaluation (STEVE)**.
 
 ---
 
@@ -17,7 +17,7 @@ deploy/
 │   │   └── README.md
 │   ├── helm/                      # Production Kubernetes Helm 3 Chart
 │   │   ├── README.md
-│   │   └── setve-cluster/
+│   │   └── steve-cluster/
 │   │       ├── Chart.yaml
 │   │       ├── values.yaml
 │   │       └── templates/
@@ -25,7 +25,7 @@ deploy/
 │       ├── README.md
 │       ├── controller.py
 │       └── crds/
-│           └── setvecluster-crd.yaml
+│           └── stevecluster-crd.yaml
 │
 ├── environments/                  # 2. TARGET ENVIRONMENTS & OVERLAYS (The "Where to Run")
 │   ├── README.md                  # Environment tier progression guide
@@ -53,8 +53,8 @@ deploy/
 
 Contains immutable build definitions and distribution artifacts:
 - **`packaging/docker/`**: Multi-stage Linux Docker build with `uv`, `libnuma-dev`, and core affinity capabilities (`CAP_SYS_NICE`, `CAP_SYS_ADMIN`).
-- **`packaging/helm/setve-cluster/`**: Enterprise Helm 3 package for dedicated bare-metal Kubernetes nodes.
-- **`packaging/operator/`**: Event-driven Kopf Kubernetes Operator managing declarative `SETVECluster` Custom Resources (`setve.io/v1alpha1`).
+- **`packaging/helm/steve-cluster/`**: Enterprise Helm 3 package for dedicated bare-metal Kubernetes nodes.
+- **`packaging/operator/`**: Event-driven Kopf Kubernetes Operator managing declarative `STEVECluster` Custom Resources (`steve.io/v1alpha1`).
 
 ---
 
